@@ -1,16 +1,7 @@
-const { docClient } = require("../utils/awsClient");
+const { docClient, PutCommand } = require("../utils/awsClient");
+const axios = require("axios");
 
-const tableName = "Player_2023";
-const dynamoDB = new AWS.DynamoDB();
-
-// Correct usage for listing tables
-dynamoDB.listTables({}, (err, data) => {
-  if (err) {
-    console.log("Error", err);
-  } else {
-    console.log("Success", data.TableNames);
-  }
-});
+const tableName = "Golden_Boot_Players";
 
 const insertPlayer = async (player) => {
   const params = {
@@ -19,7 +10,7 @@ const insertPlayer = async (player) => {
   };
 
   try {
-    await docClient.put(params).promise();
+    await docClient.send(new PutCommand(params));
     console.log("Successfully inserted player with ID:", player.id);
   } catch (err) {
     console.error(
@@ -31,10 +22,10 @@ const insertPlayer = async (player) => {
   }
 };
 
-const fetchDataAndInsertPlayers2023 = async () => {
+const fetchDataAndInsertGoldenBootPlayers = async () => {
   try {
     const response = await axios.get(
-      "https://fgp-data-us.s3.us-east-1.amazonaws.com/json/mls_mls/players.json?_=1708377859749"
+      "https://fgp-data-us.s3.us-east-1.amazonaws.com/json/mls_mls/players.json?_=1708807225686"
     );
     const players = response.data; // Assuming this is an array of player objects
 
@@ -46,4 +37,9 @@ const fetchDataAndInsertPlayers2023 = async () => {
   }
 };
 
-// fetchDataAndInsertPlayers();
+// const minutes = 5; // Example: run every 5 minutes
+// const interval = minutes * 60 * 1000; // Convert minutes to milliseconds
+
+// setInterval(fetchDataAndInsertGoldenBootPlayers, interval);
+
+fetchDataAndInsertGoldenBootPlayers();

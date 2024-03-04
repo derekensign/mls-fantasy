@@ -1,6 +1,6 @@
 const { docClient } = require("../../../backend/utils/awsClient");
 
-export default async function getAllPlayers(req, res) {
+export default async function getAllPlayers2023(req, res) {
   if (req.method === "GET") {
     const params = {
       TableName: "Player_2023",

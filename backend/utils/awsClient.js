@@ -1,16 +1,34 @@
+// Import required AWS SDK v3 packages
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const {
+  DynamoDBDocumentClient,
+  PutCommand,
+  ScanCommand,
+  QueryCommand,
+  UpdateCommand,
+} = require("@aws-sdk/lib-dynamodb");
+
+// Load environment variables in non-production environments
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config({ path: ".env.local" });
 }
 
-const AWS = require("aws-sdk");
-const axios = require("axios");
-
-AWS.config.update({
+// Initialize the low-level DynamoDB Client
+const ddbClient = new DynamoDBClient({
   region: process.env.AWS_REGION,
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  },
 });
 
-const docClient = new AWS.DynamoDB.DocumentClient();
+// Initialize the DynamoDB Document Client for easier data handling
+const docClient = DynamoDBDocumentClient.from(ddbClient);
 
-module.exports = { docClient };
+module.exports = {
+  docClient,
+  ScanCommand,
+  PutCommand,
+  QueryCommand,
+  UpdateCommand,
+};
