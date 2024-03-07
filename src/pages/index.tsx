@@ -1,13 +1,13 @@
 // Import the necessary React library and the PlayersList component
 import React from "react";
-import PlayersList from "../components/PlayerTable";
+import GoldenBootTable from "../components/GoldenBootTable";
 
 export default function Home() {
   return (
     <div>
-      <h1>Welcome to Our Next.js App</h1>
+      <h1>Golden Bota Boiz</h1>
       {/* Render the PlayersList component */}
-      <PlayersList />
+      <GoldenBootTable />
     </div>
   );
 }
