@@ -14,8 +14,13 @@ import {
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { fetchGoldenBootTable } from "../../backend/API";
+import { Player, Team } from "../types/goldenBootTypes";
 
-function Row({ row }) {
+function Row({
+  row: { rank, TeamName, FantasyPlayerName, TotalGoals, Players },
+}: {
+  row: Team;
+}) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -33,10 +38,10 @@ function Row({ row }) {
             {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
           </IconButton>
         </TableCell>
-        <TableCell>{row.rank}</TableCell>
-        <TableCell>{row.TeamName}</TableCell>
-        <TableCell>{row.FantasyPlayerName}</TableCell>
-        <TableCell>{row.TotalGoals}</TableCell>
+        <TableCell>{rank}</TableCell>
+        <TableCell>{TeamName}</TableCell>
+        <TableCell>{FantasyPlayerName}</TableCell>
+        <TableCell>{TotalGoals}</TableCell>
       </TableRow>
       <TableRow className="transition duration-300 ease-in-out hover:bg-gray-100">
         <TableCell className="py-0" colSpan={6}>
@@ -50,16 +55,14 @@ function Row({ row }) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {console.log("row", row)}
-                  {row &&
-                    row.Players.map((player) => (
-                      <TableRow key={player.playerId}>
-                        <TableCell component="th" scope="row">
-                          {player.PlayerName}
-                        </TableCell>
-                        <TableCell>{player.Goals}</TableCell>
-                      </TableRow>
-                    ))}
+                  {Players.map((player) => (
+                    <TableRow key={player.playerId}>
+                      <TableCell component="th" scope="row">
+                        {player.PlayerName}
+                      </TableCell>
+                      <TableCell>{player.Goals}</TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </Box>
@@ -76,15 +79,18 @@ function CollapsibleTable() {
   useEffect(() => {
     const getTeams = async () => {
       const teamsData = await fetchGoldenBootTable();
-      const sortedTeams = teamsData.sort((a, b) => b.TotalGoals - a.TotalGoals);
+      const sortedTeams = teamsData.sort(
+        (a: Team, b: Team) => b.TotalGoals - a.TotalGoals
+      );
 
-      // Add a ranking number to each team
-      const rankedTeams = sortedTeams.map((team, index) => ({
-        rank: index + 1, // Add a rank property
-        ...team,
-      }));
+      const rankedTeams = sortedTeams.map((team: Team, index: number) => {
+        const { rank, ...teamWithoutRank } = team;
+        return {
+          rank: index + 1,
+          ...teamWithoutRank,
+        };
+      });
 
-      console.log("Sorted and ranked teams data", rankedTeams);
       setTeams(rankedTeams);
     };
 
