@@ -38,38 +38,44 @@ function Row({
           <IconButton
             aria-label="expand row"
             size="small"
-            onClick={() => setOpen(!open)}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent triggering parent row click
+              setOpen(!open);
+            }}
           >
             {open ? <KeyboardArrowUp /> : <KeyboardArrowDown />}
           </IconButton>
         </TableCell>
       </TableRow>
-      <TableRow className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70">
-        <TableCell className="py-0" colSpan={6}>
-          <Collapse in={open} timeout="auto" unmountOnExit>
-            <Box sx={{ margin: 1 }}>
-              <Table size="small" aria-label="players">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Player Name</TableCell>
-                    <TableCell>Goals</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {Players.map((player) => (
-                    <TableRow key={player.playerId}>
-                      <TableCell component="th" scope="row">
-                        {player.PlayerName}
-                      </TableCell>
-                      <TableCell>{player.Goals}</TableCell>
+
+      {open && (
+        <TableRow className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70">
+          <TableCell className="!py-0" colSpan={6}>
+            <Collapse in={open} timeout="auto" unmountOnExit>
+              <Box sx={{ margin: 1 }}>
+                <Table size="small" aria-label="players">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Player Name</TableCell>
+                      <TableCell>Goals</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Box>
-          </Collapse>
-        </TableCell>
-      </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {Players.map((player) => (
+                      <TableRow key={player.playerId}>
+                        <TableCell component="th" scope="row">
+                          {player.PlayerName}
+                        </TableCell>
+                        <TableCell>{player.Goals}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
+            </Collapse>
+          </TableCell>
+        </TableRow>
+      )}
     </>
   );
 }
@@ -130,12 +136,3 @@ function CollapsibleTable() {
 }
 
 export default CollapsibleTable;
-
-// Light Gold: #FDD017 - A bright and vibrant shade of gold that mimics the look of polished gold.
-// Pale Gold: #FDF5E6 - A soft, creamy gold that works well for backgrounds and subtle gold accents.
-// Metallic Gold: #D4AF37 - This shade closely resembles the color of gold metal, providing a classic and elegant look.
-// Rose Gold: #B76E79 - A pinkish gold that adds a unique, modern twist to the traditional gold color.
-// Antique Gold: #DAA520 - A darker gold with a hint of bronze, giving it an aged and sophisticated appearance.
-// Golden Yellow: #FFDF00 - A vivid, sunny gold that brings brightness and energy to designs.
-// Rich Gold: #FFD700 - A true gold color that is both luxurious and attention-grabbing.
-// Deep Gold: #B8860B - A

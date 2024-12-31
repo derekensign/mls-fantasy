@@ -1,4 +1,4 @@
-const { docClient } = require("../../../backend/utils/awsClient");
+const { docClient } = require("../../backend/utils/awsClient");
 
 export default async function getAllPlayers2023(req, res) {
   if (req.method === "GET") {
