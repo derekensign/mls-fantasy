@@ -37,9 +37,4 @@ const fetchDataAndInsertGoldenBootPlayers = async () => {
   }
 };
 
-// const minutes = 5; // Example: run every 5 minutes
-// const interval = minutes * 60 * 1000; // Convert minutes to milliseconds
-
-// setInterval(fetchDataAndInsertGoldenBootPlayers, interval);
-
 fetchDataAndInsertGoldenBootPlayers();

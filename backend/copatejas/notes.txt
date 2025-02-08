@@ -1,0 +1,7 @@
+// https://rapidapi.com/api-sports/api/api-football
+
+MLS league id 253
+
+name: "Austin" id: 16489
+name: Houston Dynamo id: 1600
+name: FC Dallas id: 1597

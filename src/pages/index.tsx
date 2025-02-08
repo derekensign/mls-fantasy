@@ -1,46 +1,74 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
+import { useRouter } from "next/router";
+import { fetchUserDetails } from "../../backend/API";
 
-export default function HomePage() {
+function TeamHome() {
   const auth = useAuth();
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
 
-  const handleSignIn = async () => {
-    try {
-      console.log("Starting signinRedirect...");
-      await auth.signinRedirect();
-      console.log("signinRedirect completed.");
-    } catch (error) {
-      console.error("Error during signinRedirect:", error);
+  useEffect(() => {
+    const fetchTeamData = async () => {
+      if (auth.isAuthenticated && auth.user?.profile.email) {
+        setLoading(true);
+        try {
+          const response = await fetch(
+            "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod/get-my-team",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ email: auth.user.profile.email }),
+            }
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            router.push({
+              pathname: "/MyTeam",
+              query: { teamData: JSON.stringify(data) },
+            });
+          } else {
+            console.error("Failed to fetch team data:", await response.text());
+          }
+        } catch (error) {
+          console.error("Error fetching team data:", error);
+        } finally {
+          setLoading(false);
+        }
+      }
+    };
+
+    if (auth.isAuthenticated) {
+      fetchTeamData();
+      // fetchUserDetails(auth.user?.profile.email);
     }
-    console.log("Sign-in complete.");
-  };
+  }, [auth.isAuthenticated, auth.user?.profile.email, router]);
 
   if (auth.isLoading) {
-    return <div>Loading...</div>;
+    return <div>Loading authentication...</div>;
   }
 
   if (auth.error) {
-    console.error(auth.error);
     return <div>Error: {auth.error.message}</div>;
   }
 
-  if (auth.isAuthenticated) {
-    console.log("auth", auth);
+  if (!auth.isAuthenticated) {
     return (
       <div>
-        <pre> Hello: {auth.user?.profile.email} </pre>
-        <pre> ID Token: {auth.user?.id_token} </pre>
-        <pre> Access Token: {auth.user?.access_token} </pre>
-        <pre> Refresh Token: {auth.user?.refresh_token} </pre>
-        <button onClick={() => auth.removeUser()}>Sign out</button>
+        <h1>Welcome to MLS Fantasy</h1>
+        <p>Please log in to view your team standings.</p>
       </div>
     );
   }
 
-  return (
-    <div>
-      <h1>Welcome to MLS Fantasy</h1>
-      <button onClick={() => auth.signinRedirect()}>Sign in</button>
-    </div>
-  );
+  if (loading) {
+    return <div>Loading team data...</div>;
+  }
+
+  return <div>Welcome to your team page!</div>;
 }
+
+export default TeamHome;

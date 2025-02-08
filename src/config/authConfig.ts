@@ -5,5 +5,5 @@ export const COGNITO_CONFIG = {
     process.env.NEXT_PUBLIC_REDIRECT_URI || "http://localhost:3000/auth",
   cognitoDomain:
     process.env.NEXT_PUBLIC_COGNITO_DOMAIN ||
-    "https://us-east-1_D6OPuwWML.auth.us-east-1.amazoncognito.com",
+    "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_D6OPuwWML",
 };

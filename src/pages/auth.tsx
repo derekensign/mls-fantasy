@@ -11,7 +11,7 @@ export default function Auth() {
       console.log("User authenticated:", auth.user);
 
       // Redirect to the team page after successful login
-      router.replace("/home");
+      router.replace("/");
     } else if (auth.error) {
       console.error("Authentication error:", auth.error.message);
 
