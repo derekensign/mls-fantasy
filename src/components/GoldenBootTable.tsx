@@ -13,7 +13,7 @@ import {
   Typography,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
-import { fetchGoldenBootTable } from "../../backend/API";
+import { fetchGoldenBootTable } from "../backend/API";
 import { Team } from "../types/goldenBootTypes";
 import Image from "next/image";
 

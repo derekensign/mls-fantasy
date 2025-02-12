@@ -10,7 +10,7 @@ import {
   TableSortLabel,
   Button,
 } from "@mui/material";
-import { fetchPlayers2024 } from "../../backend/API";
+import { fetchPlayers2024 } from "../backend/API";
 
 interface Player {
   id: string;

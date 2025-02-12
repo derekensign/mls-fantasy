@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Table,
   TableBody,
@@ -25,8 +25,7 @@ interface DraftAvailablePlayersTableProps {
   draftInfo: DraftInfo | null;
   timer: number;
   userFantasyPlayerId?: string;
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
+  fantasyPlayers: any[];
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -35,9 +34,10 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   draftInfo,
   timer,
   userFantasyPlayerId,
-  searchTerm,
-  setSearchTerm,
+  fantasyPlayers,
 }) => {
+  const [searchTerm, setSearchTerm] = useState<string>("");
+
   // Sorting state and logic
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     key: "actions",
@@ -108,15 +108,28 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
     minWidth: "auto",
   };
 
+  // Precalculate the Actions column width based on the longest team name.
+  const estimatedActionsColumnWidth = useMemo(() => {
+    if (fantasyPlayers && fantasyPlayers.length > 0) {
+      const longestName = fantasyPlayers.reduce((prev, curr) =>
+        curr.TeamName.trim().length > prev.TeamName.trim().length ? curr : prev
+      ).TeamName;
+      // Estimate 10px per character with an extra 20px for padding, minimum width: 150px.
+      const width = longestName.length * 10 + 20;
+      return `${Math.max(width, 150)}px`;
+    }
+    return "150px";
+  }, [fantasyPlayers]);
+
   /*
    * Mobile View: Uses a grid layout with a header (with sorting controls) rendered once.
    * The grid ensures a consistent column width with some extra right padding for the Actions column.
    */
-  const renderMobileView = () => (
+  const renderMobileView = (players: Player[]) => (
     <div className="block lg:hidden">
       {/* Mobile header with sorting controls */}
       <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm font-bold">
-        <div className="text-center">
+        <div className="flex items-center justify-center">
           <TableSortLabel
             active={sortConfig.key === "name"}
             direction={sortConfig.key === "name" ? sortConfig.direction : "asc"}
@@ -125,7 +138,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             Name
           </TableSortLabel>
         </div>
-        <div className="text-center">
+        <div className="flex items-center justify-center">
           <TableSortLabel
             active={sortConfig.key === "team"}
             direction={sortConfig.key === "team" ? sortConfig.direction : "asc"}
@@ -134,7 +147,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             Team
           </TableSortLabel>
         </div>
-        <div className="text-center">
+        <div className="flex items-center justify-center">
           <TableSortLabel
             active={sortConfig.key === "goals_2024"}
             direction={
@@ -145,19 +158,21 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             Goals
           </TableSortLabel>
         </div>
-        <div className="text-center pr-4">Actions</div>
+        <div className="flex items-center justify-center pr-4">Actions</div>
       </div>
       {/* Player rows */}
-      {sortedPlayers.map((player) => (
+      {players.map((player) => (
         <div
           key={player.id}
-          className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm"
+          className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm items-center"
         >
-          <div className="text-center">{player.name}</div>
-          <div className="text-center">{player.team}</div>
-          <div className="text-center">{player.goals_2024}</div>
-          <div className="text-center pr-4">
-            {(!player.draftedBy || player.draftedBy === "") && (
+          <div className="flex items-center justify-center">{player.name}</div>
+          <div className="flex items-center justify-center">{player.team}</div>
+          <div className="flex items-center justify-center">
+            {player.goals_2024}
+          </div>
+          <div className="flex items-center justify-center pr-4">
+            {!player.draftedBy || player.draftedBy === "" ? (
               <Button
                 variant="contained"
                 onClick={() => handleDraft(player)}
@@ -166,6 +181,8 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
               >
                 Draft
               </Button>
+            ) : (
+              <div>Drafted</div>
             )}
           </div>
         </div>
@@ -174,7 +191,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   );
 
   // Desktop View: Uses the existing Material‑UI Table layout with sorting controls.
-  const renderDesktopView = () => (
+  const renderDesktopView = (players: Player[]) => (
     <div className="hidden lg:block">
       <TableContainer component={Paper} className="shadow rounded-lg">
         <Table className="min-w-full divide-y divide-[#B8860B]">
@@ -215,12 +232,15 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                   Goals (2024)
                 </TableSortLabel>
               </TableCell>
-              <TableCell>
+              <TableCell
+                style={{
+                  minWidth: estimatedActionsColumnWidth,
+                  width: estimatedActionsColumnWidth,
+                }}
+              >
                 <TableSortLabel
-                  active={sortConfig.key === "actions"}
-                  direction={
-                    sortConfig.key === "actions" ? sortConfig.direction : "asc"
-                  }
+                  active={draftInfo?.draft_order.includes("actions") || false}
+                  direction={"asc"}
                   onClick={() => handleSort("actions")}
                 >
                   Actions
@@ -229,7 +249,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
-            {sortedPlayers.map((player) => (
+            {players.map((player) => (
               <TableRow
                 key={player.id}
                 className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70"
@@ -237,16 +257,46 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                 <TableCell>{player.name}</TableCell>
                 <TableCell>{player.team}</TableCell>
                 <TableCell>{player.goals_2024}</TableCell>
-                <TableCell>
+                <TableCell
+                  style={{
+                    minWidth: estimatedActionsColumnWidth,
+                    width: estimatedActionsColumnWidth,
+                  }}
+                >
                   {player.draftedBy ? (
-                    <span>Drafted by {player.draftedBy}</span>
+                    <span className="text-gray-500">
+                      Drafted by{" "}
+                      {
+                        // Lookup the team name from fantasyPlayers; fallback to id if not found.
+                        fantasyPlayers.find(
+                          (fp) =>
+                            fp.FantasyPlayerId.toString() === player.draftedBy
+                        )?.TeamName || player.draftedBy
+                      }
+                    </span>
                   ) : (
                     <Button
                       variant="contained"
-                      color="primary"
                       onClick={() => handleDraft(player)}
-                      sx={draftButtonSX}
-                      disabled={isDraftDisabled(player)}
+                      disabled={
+                        draftInfo?.current_turn_team !== userFantasyPlayerId
+                      }
+                      sx={{
+                        backgroundColor:
+                          draftInfo?.current_turn_team !== userFantasyPlayerId
+                            ? "#ccc !important"
+                            : "black !important",
+                        color:
+                          draftInfo?.current_turn_team !== userFantasyPlayerId
+                            ? "#666 !important"
+                            : "white !important",
+                        "&:hover": {
+                          backgroundColor:
+                            draftInfo?.current_turn_team !== userFantasyPlayerId
+                              ? "#ccc !important"
+                              : "#333 !important",
+                        },
+                      }}
                     >
                       Draft
                     </Button>
@@ -262,7 +312,6 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
 
   return (
     <div className="w-full">
-      {/* Search Input */}
       <div className="mb-4">
         <input
           type="text"
@@ -272,8 +321,8 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
           className="mb-4 p-2 border border-gray-300 rounded w-full max-w-md"
         />
       </div>
-      {renderMobileView()}
-      {renderDesktopView()}
+      {renderMobileView(filteredPlayers)}
+      {renderDesktopView(filteredPlayers)}
     </div>
   );
 };

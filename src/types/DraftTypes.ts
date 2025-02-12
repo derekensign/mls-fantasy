@@ -1,5 +1,5 @@
 export interface Player {
-  id: string;
+  id: number;
   name: string;
   team: string;
   goals_2024: number;
@@ -15,7 +15,27 @@ export interface DraftedPlayer {
 export interface DraftInfo {
   league_id: string;
   draft_status: string;
+  drafted_players: {
+    player_id: number;
+    team_drafted_by: string;
+    draft_time: string;
+  }[];
   draft_order: string[];
   current_turn_team: string;
-  drafted_players: DraftedPlayer[];
+  draftStartTime: string;
+  maxRounds: number;
+  sessionEnded?: boolean;
+}
+
+export interface FantasyPlayer {
+  LeagueId: number;
+  FantasyPlayerId: number;
+  TotalGoals: number;
+  TeamName: string;
+  FantasyPlayerName: string;
+  Players: {
+    Goals: number;
+    playerId: number;
+    PlayerName: string;
+  }[];
 }

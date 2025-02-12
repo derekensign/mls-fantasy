@@ -1,35 +1,66 @@
 import React from "react";
-import { Drawer } from "@mui/material";
+import {
+  Drawer,
+  IconButton,
+  Typography,
+  Box,
+  useMediaQuery,
+} from "@mui/material";
+import { useTheme } from "@mui/material/styles";
+import CloseIcon from "@mui/icons-material/Close";
 import DraftedPlayersTable from "./DraftedPlayersTable";
 import { Player, DraftInfo } from "../types/DraftTypes";
-
+import { FantasyPlayer } from "./DraftedPlayersTable";
 interface DraftedTableDrawerProps {
-  drawerOpen: boolean;
-  setDrawerOpen: (open: boolean) => void;
+  open: boolean;
+  onClose: () => void;
   players: Player[];
   draftInfo: DraftInfo | null;
+  fantasyPlayers: FantasyPlayer[];
 }
 
 const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
-  drawerOpen,
-  setDrawerOpen,
+  open,
+  onClose,
   players,
   draftInfo,
+  fantasyPlayers,
 }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+
   return (
-    <Drawer
-      anchor="right"
-      open={drawerOpen}
-      onClose={() => setDrawerOpen(false)}
-      PaperProps={{
-        sx: {
-          backgroundColor: "#FFFFF0 !important", // Matching the TableBody background in DraftedPlayersTable.tsx
-          boxShadow: 24,
-          height: "100%", // Adjust as necessary for your layout
-        },
-      }}
-    >
-      <DraftedPlayersTable players={players} draftInfo={draftInfo} />
+    <Drawer anchor="right" open={open} onClose={onClose}>
+      <Box
+        sx={{
+          width: isMobile ? "100vw" : 600,
+          borderRadius: isMobile ? 0 : 2,
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            p: 2,
+            borderBottom: 1,
+            borderColor: "divider",
+            borderRadius: isMobile ? 0 : "inherit",
+          }}
+        >
+          <Typography variant="h6">Drafted Players</Typography>
+          <IconButton onClick={onClose} aria-label="Close">
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <DraftedPlayersTable
+          players={players}
+          draftInfo={draftInfo}
+          fantasyPlayers={fantasyPlayers}
+          isMobile={isMobile}
+        />
+      </Box>
     </Drawer>
   );
 };

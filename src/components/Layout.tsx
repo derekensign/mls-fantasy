@@ -12,7 +12,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
     <>
       <Navbar auth={auth} />
-      <main>{children}</main>
+      <main className="bg-black">{children}</main>
     </>
   );
 };

@@ -41,6 +41,9 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
           <Link href="/league/1" className="hover:underline">
             League
           </Link>
+          <Link href="/MyTeam" className="hover:underline">
+            My Team
+          </Link>
         </div>
 
         {/* Authentication Buttons */}

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { fetchUserDetails as fetchUserDetailsAPI } from "../../backend/API";
+import { fetchUserDetails as fetchUserDetailsAPI } from "../backend/API";
 
 interface UserDetails {
   email: string;
