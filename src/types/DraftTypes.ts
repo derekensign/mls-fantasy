@@ -15,11 +15,6 @@ export interface DraftedPlayer {
 export interface DraftInfo {
   league_id: string;
   draft_status: string;
-  drafted_players: {
-    player_id: number;
-    team_drafted_by: string;
-    draft_time: string;
-  }[];
   draftOrder: string[];
   current_turn_team: string;
   draftStartTime: string;
@@ -27,6 +22,7 @@ export interface DraftInfo {
   sessionEnded?: boolean;
   activeParticipants?: string[];
   numberOfRounds?: number;
+  current_team_turn_ends?: string;
 }
 
 export interface FantasyPlayer {

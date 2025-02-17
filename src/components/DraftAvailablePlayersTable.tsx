@@ -24,7 +24,6 @@ interface DraftAvailablePlayersTableProps {
   draftedPlayers: DraftedPlayer[];
   handleDraft: (player: Player) => void;
   draftInfo: DraftInfo | null;
-  timer: number;
   userFantasyPlayerId?: string;
   fantasyPlayers: any[];
 }
@@ -34,7 +33,6 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   draftedPlayers,
   handleDraft,
   draftInfo,
-  timer,
   userFantasyPlayerId,
   fantasyPlayers,
 }) => {

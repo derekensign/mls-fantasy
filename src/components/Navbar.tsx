@@ -61,7 +61,6 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
         <div className="flex items-center space-x-2 sm:space-x-4">
           {auth.isAuthenticated ? (
             <>
-              {console.log("user details", userDetails)}
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <span className="font-semibold text-sm sm:text-base">
                   Hi, {userDetails?.FantasyPlayerName.split(" ")[0] || "User"}!

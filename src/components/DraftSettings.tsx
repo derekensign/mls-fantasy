@@ -8,7 +8,7 @@ import {
   DraftData,
   fetchFantasyPlayersByLeague,
 } from "../backend/API";
-import DraftOrderEditor, { FantasyPlayer } from "./DraftOrderEditor";
+import DraftOrderEditor from "./DraftOrderEditor";
 import { DraftInfo } from "@/types/DraftTypes";
 
 interface DraftSettingsProps {
@@ -43,90 +43,70 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
   const [updating, setUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
 
   // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
     if (draftSettings) {
       if (draftSettings.draftOrder && draftSettings.draftOrder.length > 0) {
-        setDraftOrderIds(draftSettings.draftOrder);
+        const plainDraftOrder = draftSettings.draftOrder.map((item: any) =>
+          item.S ? item.S : extractValue(item)
+        );
+        console.log(
+          "Initializing draftOrderIds from draftSettings:",
+          plainDraftOrder
+        );
+        setDraftOrderIds(plainDraftOrder);
       }
       setDraftStartTime(draftSettings.draftStartTime || "");
       setNumberOfRounds(draftSettings.numberOfRounds || 5);
     }
-  }, [draftSettings]);
+  }, [draftSettings, extractValue]);
 
   // Always fetch fantasy players.
   useEffect(() => {
-    const fetchPlayers = async () => {
-      try {
-        const players = await fetchFantasyPlayersByLeague(leagueId);
-        // Ensure FantasyPlayerId is a string.
-        const convertedPlayers = players.map((player) => ({
-          ...player,
-          FantasyPlayerId: player.FantasyPlayerId.toString(),
-        }));
-
-        if (
-          draftSettings &&
-          draftSettings.draftOrder &&
-          draftSettings.draftOrder.length > 0
-        ) {
-          // Reorder the fetched players to match the order from draftSettings.
-          const playerMap = new Map<string, any>();
-          convertedPlayers.forEach((player) => {
-            playerMap.set(player.FantasyPlayerId, player);
-          });
-          const sortedPlayers = draftSettings.draftOrder
-            .map((id) => playerMap.get(id))
-            .filter((p): p is any => p !== undefined);
-          // Append players that weren't in the draftSettings order.
-          const remainingPlayers = convertedPlayers.filter(
-            (player) =>
-              !draftSettings.draftOrder!.includes(player.FantasyPlayerId)
-          );
-          const finalPlayers = [...sortedPlayers, ...remainingPlayers];
-          setOrderedPlayers(finalPlayers);
-        } else {
-          // No draft order defined yet: use the fetched default order.
+    // Only fetch if no initial order exists.
+    if (
+      !draftSettings ||
+      !draftSettings.draft_order ||
+      draftSettings.draft_order.length === 0
+    ) {
+      const fetchFantasyPlayers = async () => {
+        try {
+          const players = await fetchFantasyPlayersByLeague(leagueId);
+          const convertedPlayers = players.map((player) => ({
+            ...player,
+            FantasyPlayerId: player.FantasyPlayerId.toString(),
+          }));
           setOrderedPlayers(convertedPlayers);
-          // Also update the parent state for order.
-          const defaultOrder = convertedPlayers.map(
-            (player) => player.FantasyPlayerId
-          );
-          setDraftOrderIds(defaultOrder);
-          // Save the default order back to the DB (only once)
-          if (!defaultOrderSaved) {
-            await updateDraftSettings(leagueId, {
-              draftStartTime,
-              numberOfRounds,
-              draftOrder: defaultOrder,
-            });
-            setDefaultOrderSaved(true);
-          }
-        }
-      } catch (err: any) {
-        console.error("Failed to fetch fantasy players", err);
-      }
-    };
 
-    fetchPlayers();
-  }, [
-    leagueId,
-    draftSettings,
-    defaultOrderSaved,
-    draftStartTime,
-    numberOfRounds,
-  ]);
+          // If still no order has been set, use fantasyPlayers as fallback.
+          if (convertedPlayers.length > 0 && draftOrderIds.length === 0) {
+            setDraftOrderIds(
+              convertedPlayers.map((player) => player.FantasyPlayerId)
+            );
+          }
+        } catch (err: any) {
+          console.error("Failed to fetch fantasy players", err);
+        }
+      };
+      fetchFantasyPlayers();
+    }
+  }, [leagueId, draftSettings, draftOrderIds.length]);
 
   // Callback when order changes in DraftOrderEditor.
   const handleOrderChange = (newOrder: string[]) => {
+    console.log("handleOrderChange: new order received:", newOrder);
     setDraftOrderIds(newOrder);
-    // Reorder orderedPlayers array to match newOrder.
+
+    // Use the full list of teams (fantasyPlayers) instead of orderedPlayers which might be empty.
     const playerMap = new Map<string, any>();
     orderedPlayers.forEach((p) => playerMap.set(p.FantasyPlayerId, p));
+
     const reordered = newOrder
       .map((id) => playerMap.get(id))
       .filter((p): p is any => p !== undefined);
+    console.log("handleOrderChange: reordered players:", reordered);
     setOrderedPlayers(reordered);
   };
 
@@ -134,15 +114,21 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
     setUpdating(true);
     setError(null);
     setSuccessMessage(null);
+    console.log("handleSave: saving draft settings with data:", {
+      draftStartTime,
+      numberOfRounds,
+      draftOrder: draftOrderIds,
+    });
     try {
       await updateDraftSettings(leagueId, {
         draftStartTime,
         numberOfRounds,
         draftOrder: draftOrderIds,
       });
+      console.log("handleSave: successfully updated draft settings in DB.");
       setSuccessMessage("Draft settings updated successfully!");
     } catch (err: any) {
-      console.error(err);
+      console.error("handleSave: Error updating draft settings:", err);
       setError(err.message || "Failed to update draft settings");
     }
     setUpdating(false);
@@ -181,6 +167,30 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
       );
     }
   };
+
+  const fetchSettings = async () => {
+    try {
+      const settings = await getDraftSettings(leagueId);
+      console.log("Fetched updated draft settings:", settings);
+      setDraftSettings(settings);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching draft settings:", error);
+    }
+  };
+
+  // Fetch initially.
+  useEffect(() => {
+    fetchSettings();
+  }, [leagueId]);
+
+  // Poll every 5 seconds (adjust as needed).
+  useEffect(() => {
+    const intervalId = setInterval(() => {
+      fetchSettings();
+    }, 5000);
+    return () => clearInterval(intervalId);
+  }, [leagueId]);
 
   return (
     <Paper

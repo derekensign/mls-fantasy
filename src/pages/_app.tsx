@@ -28,17 +28,12 @@ const UserInitializer: React.FC<UserInitializerProps> = ({ children }) => {
 
   useEffect(() => {
     const fetchAndSetUserDetails = async () => {
-      console.log("Auth state:", auth.isAuthenticated, auth.user);
-
       if (auth.isAuthenticated) {
         const profile = auth.user?.profile;
-        console.log("Auth profile:", profile);
 
         if (profile?.email) {
           try {
-            console.log("Fetching user details for email:", profile.email);
             await fetchUserDetails(profile.email); // Call the store's fetchUserDetails method
-            console.log("User details successfully fetched.");
           } catch (error) {
             console.error("Error fetching user details:", error);
           }
@@ -46,7 +41,6 @@ const UserInitializer: React.FC<UserInitializerProps> = ({ children }) => {
           console.warn("No email found in profile.");
         }
       } else {
-        console.log("Clearing user details.");
         clearUserDetails();
       }
     };

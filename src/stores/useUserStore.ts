@@ -41,7 +41,6 @@ const useUserStore = create<UserStore>((set) => ({
         email,
         leagueId
       )) as unknown as RawUserDetailsResponse;
-      console.log("Raw Response for User Details:", rawResponse);
 
       if (rawResponse && rawResponse.teams && rawResponse.teams.length > 0) {
         const rawData = rawResponse.teams[0]; // get the first team
@@ -55,7 +54,6 @@ const useUserStore = create<UserStore>((set) => ({
           FantasyPlayerId: Number(rawData.fantasyPlayerId),
         };
 
-        console.log("Normalized User Details:", normalizedDetails);
         set({ userDetails: normalizedDetails });
       } else {
         console.warn(

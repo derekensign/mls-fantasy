@@ -56,6 +56,23 @@ export interface DraftData {
   draftStartTime?: string;
   numberOfRounds?: number;
   activeParticipants?: string[];
+  sessionEnded?: boolean;
+}
+
+export interface DraftInfo {
+  league_id: string;
+  current_turn_team?: string;
+  draftOrder: string[];
+  draft_status: string;
+  drafted_players: {
+    player_id: number;
+    team_drafted_by: string;
+    draft_time: string;
+  }[];
+  draftStartTime?: string;
+  numberOfRounds?: number;
+  activeParticipants?: string[];
+  current_team_turn_ends?: string;
 }
 
 export const fetchGoldenBootTable = async (): Promise<
@@ -65,7 +82,6 @@ export const fetchGoldenBootTable = async (): Promise<
     const response: AxiosResponse<GoldenBootTableResponse[]> = await axios.get(
       `${BASE_URL}/golden-boot-table`
     );
-    console.log("Response", response);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch teams:", error);
@@ -78,7 +94,6 @@ export const fetchPlayers2024 = async (): Promise<Player[]> => {
     const response: AxiosResponse<Player[]> = await axios.get(
       `${BASE_URL}/get-all-players`
     );
-    console.log("Response for Players 2024:", response);
     return response.data;
   } catch (error) {
     console.error("Failed to fetch players 2024:", error);
@@ -129,7 +144,6 @@ export const draftPlayer = async (
 };
 
 export const fetchLeagueData = async (leagueId: string): Promise<any> => {
-  console.log("Fetching league data for league ID:", leagueId);
   try {
     const response: AxiosResponse<any> = await axios.get(
       `${BASE_URL}/league/${leagueId}`
@@ -151,7 +165,6 @@ export const fetchUserDetails = async (
       `${BASE_URL}/get-user-info`,
       { params }
     );
-    console.log("User details response:", response);
     return response.data;
   } catch (error) {
     console.error("Error fetching user details:", error);
@@ -162,9 +175,9 @@ export const fetchUserDetails = async (
 // Existing function for fetching draft data using Axios.
 export const getDraftSettings = async (
   leagueId: string
-): Promise<DraftData | null> => {
+): Promise<DraftInfo | null> => {
   try {
-    const response: AxiosResponse<DraftData> = await axios.get(
+    const response: AxiosResponse<DraftInfo> = await axios.get(
       `${BASE_URL}/league/${leagueId}/draft-settings`
     );
     return response.data;
@@ -223,16 +236,19 @@ export const getLeagueSettings = async (leagueId?: string): Promise<any> => {
 // New function for updating draft data
 export const updateDraftSettings = async (
   leagueId: string,
-  {
-    draftStartTime,
-    numberOfRounds = 5,
-    draftOrder,
-  }: { draftStartTime: string; numberOfRounds?: number; draftOrder: string[] }
-): Promise<any> => {
+  settings: {
+    draftStartTime?: string;
+    numberOfRounds?: number;
+    draftOrder?: string[];
+    current_turn_team?: string;
+    sessionEnded?: boolean;
+    current_team_turn_ends?: string;
+  }
+): Promise<DraftInfo | null> => {
   try {
-    const response: AxiosResponse<any> = await axios.post(
+    const response: AxiosResponse<DraftInfo> = await axios.post(
       `${BASE_URL}/league/${leagueId}/draft-settings`,
-      { draftStartTime, numberOfRounds, draftOrder }
+      settings
     );
     return response.data;
   } catch (error) {
@@ -307,7 +323,6 @@ export interface CreateLeagueResponse {
 export async function createLeague(
   payload: CreateLeagueRequest
 ): Promise<CreateLeagueResponse> {
-  console.log("Creating league with payload:", payload);
   const response = await fetch(`${BASE_URL}/league/create`, {
     method: "POST",
     headers: {

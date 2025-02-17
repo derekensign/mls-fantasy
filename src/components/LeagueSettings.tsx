@@ -38,7 +38,6 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({
     // Fetch league settings on mount
     const fetchSettings = async () => {
       setLoading(true);
-      console.log("Fetching league settings for leagueId:", leagueId);
       try {
         // GET /league/{league_id}/settings response may include DynamoDB types
         const data = await getLeagueSettings(leagueId);

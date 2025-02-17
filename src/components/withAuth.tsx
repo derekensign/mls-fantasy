@@ -30,7 +30,6 @@ const withAuth = <P extends object>(
     }, [auth.isLoading, auth.isAuthenticated, redirecting, router]);
 
     if (auth.isLoading || redirecting) {
-      console.log("Auth state: ", auth);
       return <div>Loading...</div>;
     }
 
