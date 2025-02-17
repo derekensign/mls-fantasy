@@ -1,12 +1,10 @@
 import axios, { AxiosResponse } from "axios";
 import { DraftInfo } from "../types/DraftTypes"; // Use the single source of truth
+import { GoldenBootTableResponse } from "../types/goldenBootTypes";
 
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
 
 // Define types for the responses and payloads
-interface GoldenBootTableResponse {
-  // Define the structure of the response if known
-}
 
 interface Player {
   id: string;

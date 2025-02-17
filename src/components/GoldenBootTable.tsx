@@ -10,36 +10,31 @@ import {
   Collapse,
   Box,
   IconButton,
-  Typography,
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { fetchGoldenBootTable } from "../backend/API";
-import { Team } from "../types/goldenBootTypes";
+import { Team, Player, GoldenBootTableResponse } from "../types/goldenBootTypes";
 import Image from "next/image";
 
-function Row({
-  row: { rank, TeamName, FantasyPlayerName, TotalGoals, Players },
-}: {
-  row: Team;
-}) {
+function Row({ row }: { row: Team }) {
   const [open, setOpen] = useState(false);
-
+  const { rank, TeamName, FantasyPlayerName, TotalGoals, Players } = row;
   return (
     <>
       <TableRow
         onClick={() => setOpen(!open)}
-        className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70 "
+        className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70"
       >
         <TableCell>{rank}</TableCell>
-        <TableCell>{TeamName}</TableCell>
         <TableCell>{FantasyPlayerName}</TableCell>
+        <TableCell>{TeamName}</TableCell>
         <TableCell>{TotalGoals}</TableCell>
         <TableCell className="hidden sm:table-cell">
           <IconButton
             aria-label="expand row"
             size="small"
             onClick={(e) => {
-              e.stopPropagation(); // Prevent triggering parent row click
+              e.stopPropagation();
               setOpen(!open);
             }}
           >
@@ -47,56 +42,64 @@ function Row({
           </IconButton>
         </TableCell>
       </TableRow>
-
-      {open && (
-        <TableRow className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70">
-          <TableCell className="!py-0" colSpan={6}>
-            <Collapse in={open} timeout="auto" unmountOnExit>
-              <Box sx={{ margin: 1 }}>
-                <Table size="small" aria-label="players">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Player Name</TableCell>
-                      <TableCell>Goals</TableCell>
+      <TableRow>
+        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+          <Collapse in={open} timeout="auto" unmountOnExit>
+            <Box margin={1}>
+              <Table size="small" aria-label="players">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Player Name</TableCell>
+                    <TableCell>Goals</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {Players.map((player: Player) => (
+                    <TableRow key={player.playerId}>
+                      <TableCell component="th" scope="row">
+                        {player.PlayerName}
+                      </TableCell>
+                      <TableCell>{player.Goals}</TableCell>
                     </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {Players.map((player) => (
-                      <TableRow key={player.playerId}>
-                        <TableCell component="th" scope="row">
-                          {player.PlayerName}
-                        </TableCell>
-                        <TableCell>{player.Goals}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </Box>
-            </Collapse>
-          </TableCell>
-        </TableRow>
-      )}
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </Collapse>
+        </TableCell>
+      </TableRow>
     </>
   );
 }
 
 function CollapsibleTable() {
-  const [teams, setTeams] = useState([]);
+  const [teams, setTeams] = useState<Team[]>([]);
 
   useEffect(() => {
     const getTeams = async () => {
-      const teamsData = await fetchGoldenBootTable();
-      const sortedTeams = teamsData.sort(
-        (a: Team, b: Team) => b.TotalGoals - a.TotalGoals
-      );
+      const teamsData: GoldenBootTableResponse[] = await fetchGoldenBootTable();
 
-      const rankedTeams = sortedTeams.map((team: Team, index: number) => {
-        const { rank, ...teamWithoutRank } = team;
-        return {
-          rank: index + 1,
-          ...teamWithoutRank,
-        };
-      });
+      // Convert fetched response to our Team[] by adding a default rank and mapping Players.
+      const convertedTeams: Team[] = teamsData.map((item) => ({
+        rank: 0, // temporary rank; will be updated below
+        TeamName: item.TeamName,
+        FantasyPlayerName: item.FantasyPlayerName,
+        TotalGoals: item.TotalGoals,
+        Players: item.Players.map((p: any) => ({
+          playerId: p.playerId,
+          PlayerName: p.PlayerName,
+          Goals: p.Goals,
+        })),
+      }));
+
+      // Sort teams by TotalGoals descending.
+      const sortedTeams = convertedTeams.sort((a, b) => b.TotalGoals - a.TotalGoals);
+
+      // Assign proper ranking based on sort order.
+      const rankedTeams = sortedTeams.map((team, index) => ({
+        ...team,
+        rank: index + 1,
+      }));
 
       setTeams(rankedTeams);
     };
@@ -125,8 +128,9 @@ function CollapsibleTable() {
               </TableRow>
             </TableHead>
             <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
-              {teams &&
-                teams.map((team, index) => <Row key={index} row={team} />)}
+              {teams.map((team, index) => (
+                <Row key={index} row={team} />
+              ))}
             </TableBody>
           </Table>
         </TableContainer>

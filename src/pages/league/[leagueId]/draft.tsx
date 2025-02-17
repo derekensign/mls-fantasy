@@ -162,7 +162,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [draftOver, leagueId]);
+  }, [draftOver, leagueId, loadDraftData]);
 
   // Auto-draft countdown effect: Only runs in advanced mode.
   useEffect(() => {
@@ -271,11 +271,6 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     const startTime = new Date(draftInfo.draftStartTime);
     if (now < startTime) {
       alert("Draft session has not started yet.");
-      return;
-    }
-
-    if (draftInfo.sessionEnded) {
-      alert("Draft session is over.");
       return;
     }
 

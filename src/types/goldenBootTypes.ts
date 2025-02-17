@@ -11,3 +11,10 @@ export interface Team {
   TotalGoals: number;
   Players: Player[];
 }
+
+export interface GoldenBootTableResponse {
+  TeamName: string;
+  FantasyPlayerName: string;
+  TotalGoals: number;
+  Players: Player[];
+}
