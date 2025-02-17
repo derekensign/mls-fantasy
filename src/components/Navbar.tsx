@@ -4,7 +4,8 @@ import { useAuth } from "react-oidc-context";
 import useUserStore from "@/stores/useUserStore"; // Import the user store
 
 function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
-  const handleLogin = () => auth.signinRedirect();
+  const handleLogin = () =>
+    (window.location.href = process.env.NEXT_PUBLIC_COGNITO_SIGNIN_URL!);
   const handleLogout = () => {
     const clientId = "7b2ljliksvl2pn7gadjrn90e1a"; // Your Cognito App Client ID
     const logoutUri = "http://localhost:3000?logout=true"; // Your post-logout redirect URI

@@ -85,11 +85,11 @@ function CollapsibleTable() {
         TeamName: item.TeamName,
         FantasyPlayerName: item.FantasyPlayerName,
         TotalGoals: item.TotalGoals,
-        Players: item.Players.map((p: any) => ({
+        Players: (item.Players?.map((p: any): Player => ({
           playerId: p.playerId,
           PlayerName: p.PlayerName,
           Goals: p.Goals,
-        })),
+        })) || []),
       }));
 
       // Sort teams by TotalGoals descending.

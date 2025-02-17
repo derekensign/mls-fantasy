@@ -59,7 +59,9 @@ function TeamHome() {
         </Typography>
         <Button
           variant="outlined"
-          onClick={() => auth.signinRedirect()}
+          onClick={() =>
+            (window.location.href = process.env.NEXT_PUBLIC_COGNITO_SIGNIN_URL!)
+          }
           sx={buttonStyle}
         >
           Sign In
