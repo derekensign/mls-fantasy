@@ -7,18 +7,20 @@ export default function Auth() {
   const router = useRouter();
 
   useEffect(() => {
-    if (auth.isAuthenticated) {
-      console.log("User authenticated:", auth.user);
-
-      // Redirect to the team page after successful login
-      router.replace("/");
-    } else if (auth.error) {
-      console.error("Authentication error:", auth.error.message);
-
-      // Redirect to the home page if there is an authentication error
-      router.replace("/");
+    console.log("Auth state in /auth page:", auth);
+    // Wait until loading is finished
+    if (!auth.isLoading) {
+      if (auth.isAuthenticated) {
+        console.log("User is authenticated:", auth.user);
+        router.replace("/");
+      } else if (auth.error) {
+        console.error("Authentication error:", auth.error);
+        router.replace("/");
+      } else {
+        console.log("Authentication not completed yet.");
+      }
     }
-  }, [auth.isAuthenticated, auth.error, auth.user, router]);
+  }, [auth, router]);
 
   return (
     <div>

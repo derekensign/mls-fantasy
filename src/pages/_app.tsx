@@ -9,12 +9,22 @@ import { COGNITO_CONFIG } from "../config/authConfig";
 
 // Define Cognito Auth Config with proper types
 const cognitoAuthConfig = {
-  authority: COGNITO_CONFIG.cognitoDomain,
+  authority: COGNITO_CONFIG.cognitoDomain, // Issuer URL for discovery
   client_id: COGNITO_CONFIG.clientId,
   redirect_uri: COGNITO_CONFIG.redirectUri,
   response_type: "code",
   scope: "phone openid email",
+  metadata: {
+    // Override to use your Hosted UI endpoints:
+    authorization_endpoint:
+      "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com/login",
+    token_endpoint:
+      "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com/oauth2/token",
+    userinfo_endpoint:
+      "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com/oauth2/userInfo",
+  },
 };
+
 
 // Props type for UserInitializer
 interface UserInitializerProps {
