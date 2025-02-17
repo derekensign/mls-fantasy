@@ -1,6 +1,20 @@
 import { create } from "zustand";
 import { fetchUserDetails as fetchUserDetailsAPI } from "../backend/API";
 
+// Define the shape of each team in the raw API response.
+interface RawUserDetails {
+  emailAddress: string;
+  fantasyPlayerName: string;
+  teamName: string;
+  fantasyPlayerId: string | number;
+  leagueId?: string;
+}
+
+// Define the overall raw API response which contains a 'teams' key.
+interface RawUserDetailsResponse {
+  teams: RawUserDetails[];
+}
+
 interface UserDetails {
   email: string;
   FantasyPlayerName: string;
@@ -22,24 +36,27 @@ const useUserStore = create<UserStore>((set) => ({
   clearUserDetails: () => set({ userDetails: null }),
   fetchUserDetails: async (email: string, leagueId?: string) => {
     try {
-      // Fetch raw user details from the API
-      const userDetails = await fetchUserDetailsAPI(email, leagueId);
-      console.log("Raw Response for User Details:", userDetails);
+      // Cast the response to our RawUserDetailsResponse type.
+      const rawResponse = (await fetchUserDetailsAPI(
+        email,
+        leagueId
+      )) as unknown as RawUserDetailsResponse;
+      console.log("Raw Response for User Details:", rawResponse);
 
-      if (userDetails.length > 0) {
-        const rawData = userDetails[0]; // Assuming the first object is the relevant one
+      if (rawResponse && rawResponse.teams && rawResponse.teams.length > 0) {
+        const rawData = rawResponse.teams[0]; // get the first team
 
-        // Normalize the DynamoDB response into a flat structure
+        // Normalize the API response into a flat structure.
         const normalizedDetails: UserDetails = {
-          email: rawData.EmailAddress.S,
-          FantasyPlayerName: rawData.FantasyPlayerName.S,
-          LeagueId: rawData.LeagueId.N,
-          TeamName: rawData.TeamName.S,
-          FantasyPlayerId: parseInt(rawData.FantasyPlayerId.N, 10), // Convert number strings to actual numbers
+          email: rawData.emailAddress,
+          FantasyPlayerName: rawData.fantasyPlayerName,
+          LeagueId: leagueId ?? rawData.leagueId ?? "",
+          TeamName: rawData.teamName,
+          FantasyPlayerId: Number(rawData.fantasyPlayerId),
         };
 
         console.log("Normalized User Details:", normalizedDetails);
-        set({ userDetails: normalizedDetails }); // Set the normalized data in Zustand store
+        set({ userDetails: normalizedDetails });
       } else {
         console.warn(
           "No user details found for the given email and league ID."

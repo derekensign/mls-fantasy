@@ -20,11 +20,13 @@ export interface DraftInfo {
     team_drafted_by: string;
     draft_time: string;
   }[];
-  draft_order: string[];
+  draftOrder: string[];
   current_turn_team: string;
   draftStartTime: string;
-  maxRounds: number;
+  maxRounds?: number;
   sessionEnded?: boolean;
+  activeParticipants?: string[];
+  numberOfRounds?: number;
 }
 
 export interface FantasyPlayer {

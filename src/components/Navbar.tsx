@@ -25,25 +25,36 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
   // Access user details from the store
   const { userDetails } = useUserStore();
 
+  // If the user is authenticated and has a LeagueId, link to /league/[LeagueId]/draft
+  // Otherwise, link to the join/create page at /league
+  const leagueLink =
+    auth.isAuthenticated && userDetails?.LeagueId
+      ? `/league/${userDetails.LeagueId}`
+      : "/league";
+
   return (
     <header className="bg-[#B8860B] text-white p-3 sm:p-4 shadow-md">
       <nav className="container mx-auto flex justify-between items-center px-4">
         {/* App Name */}
-        <Link href="/" className="text-2xl font-bold">
-          Golden Bota Boiz
+        <Link href="/" legacyBehavior>
+          <a className="text-2xl font-bold">Golden Bota Boiz</a>
         </Link>
 
         {/* Navigation Links */}
         <div className="flex space-x-2 sm:space-x-4">
-          <Link href="/Players" className="hover:underline">
-            Players
-          </Link>
-          <Link href="/league/1" className="hover:underline">
-            League
-          </Link>
-          <Link href="/MyTeam" className="hover:underline">
-            My Team
-          </Link>
+          {userDetails && (
+            <>
+              <Link href="/Players" legacyBehavior>
+                <a className="hover:underline">Players</a>
+              </Link>
+              <Link href={leagueLink} legacyBehavior>
+                <a className="hover:underline">League</a>
+              </Link>
+              <Link href="/MyTeam" legacyBehavior>
+                <a className="hover:underline">My Team</a>
+              </Link>
+            </>
+          )}
         </div>
 
         {/* Authentication Buttons */}

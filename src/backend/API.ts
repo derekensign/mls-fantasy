@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from "axios";
+import { DraftInfo } from "../types/DraftTypes";
 
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
 
@@ -48,12 +49,13 @@ export interface FantasyPlayer {
 export interface DraftData {
   league_id: string;
   current_turn_team?: string;
-  draft_order: string[];
+  draftOrder: string[];
   draft_status: string;
   drafted_players: string[];
   // If you add these fields via the update endpoint...
   draftStartTime?: string;
   numberOfRounds?: number;
+  activeParticipants?: string[];
 }
 
 export const fetchGoldenBootTable = async (): Promise<
@@ -116,7 +118,7 @@ export const draftPlayer = async (
       team_drafted_by: team,
     };
     const response: AxiosResponse<any> = await axios.post(
-      `${BASE_URL}/league/draft`,
+      `${BASE_URL}/league/${leagueId}/draft`,
       payload
     );
     return response.data;
@@ -158,12 +160,12 @@ export const fetchUserDetails = async (
 };
 
 // Existing function for fetching draft data using Axios.
-export const fetchDraftData = async (
+export const getDraftSettings = async (
   leagueId: string
 ): Promise<DraftData | null> => {
   try {
     const response: AxiosResponse<DraftData> = await axios.get(
-      `${BASE_URL}/league/${leagueId}/draft`
+      `${BASE_URL}/league/${leagueId}/draft-settings`
     );
     return response.data;
   } catch (error) {
@@ -208,7 +210,7 @@ export const updateLeagueSettings = async (
 };
 
 // New function for fetching league settings
-export const getLeagueSettings = async (leagueId: string): Promise<any> => {
+export const getLeagueSettings = async (leagueId?: string): Promise<any> => {
   try {
     const response = await axios.get(`${BASE_URL}/league/${leagueId}/settings`);
     return response.data;
@@ -219,7 +221,7 @@ export const getLeagueSettings = async (leagueId: string): Promise<any> => {
 };
 
 // New function for updating draft data
-export const updateDraftData = async (
+export const updateDraftSettings = async (
   leagueId: string,
   {
     draftStartTime,
@@ -229,7 +231,7 @@ export const updateDraftData = async (
 ): Promise<any> => {
   try {
     const response: AxiosResponse<any> = await axios.post(
-      `${BASE_URL}/league/${leagueId}/draft`,
+      `${BASE_URL}/league/${leagueId}/draft-settings`,
       { draftStartTime, numberOfRounds, draftOrder }
     );
     return response.data;
@@ -270,5 +272,119 @@ export const fetchActiveParticipants = async (
   } catch (error) {
     console.error("Error fetching active participants:", error);
     return [];
+  }
+};
+
+// Add this function below your other API functions
+export const fetchDraftedPlayers = async (leagueId: string): Promise<any> => {
+  try {
+    // Placeholder: update the URL once the new endpoint is ready
+    const response = await axios.get(`${BASE_URL}/league/${leagueId}/draft`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching drafted players:", error);
+    throw error;
+  }
+};
+
+export interface CreateLeagueRequest {
+  leagueName: string;
+  fantasyPlayerId: string;
+  commissionerEmail: string;
+}
+
+export interface CreateLeagueResponse {
+  message: string;
+  leagueId?: string;
+}
+
+/**
+ * Sends a POST request to create a new league.
+ *
+ * @param payload - The league information including leagueName, fantasyPlayerId, and commissionerEmail.
+ * @returns A promise resolving to the response containing a success message and leagueId.
+ */
+export async function createLeague(
+  payload: CreateLeagueRequest
+): Promise<CreateLeagueResponse> {
+  console.log("Creating league with payload:", payload);
+  const response = await fetch(`${BASE_URL}/league/create`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    // Attempt to parse the error message from the response.
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to create league");
+  }
+
+  return response.json();
+}
+
+export interface UpdateTeamProfileRequest {
+  // If provided, this is used to update an existing profile.
+  // If omitted, the backend will generate a new, unique FantasyPlayerId.
+  FantasyPlayerId?: number;
+  TeamName: string;
+  // TeamLogo is optional.
+  TeamLogo?: string;
+}
+
+export interface UpdateTeamProfileResponse {
+  FantasyPlayerId: number;
+  TeamName: string;
+  TeamLogo?: string;
+  // You can add additional return properties as needed.
+}
+
+/**
+ * Submits an update to the team profile.
+ * This function will create a new record if FantasyPlayerId is absent,
+ * and update an existing record if FantasyPlayerId is provided.
+ *
+ * @param payload - The payload should conform to UpdateTeamProfileRequest.
+ * @returns The updated team profile information.
+ */
+export async function updateTeamProfile(
+  payload: UpdateTeamProfileRequest
+): Promise<UpdateTeamProfileResponse> {
+  const response = await fetch(`${BASE_URL}/update-team`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    // Attempt to parse the error message from the response.
+    const errorData = await response.json();
+    throw new Error(errorData.message || "Failed to update team profile");
+  }
+
+  return response.json();
+}
+
+export const joinLeague = async (
+  leagueId: string,
+  fantasyPlayerId: number
+): Promise<any> => {
+  try {
+    const payload = {
+      FantasyPlayerId: fantasyPlayerId,
+      LeagueId: Number(leagueId),
+    };
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/join`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error joining league:", error);
+    throw error;
   }
 };

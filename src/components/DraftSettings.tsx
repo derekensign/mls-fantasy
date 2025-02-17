@@ -1,124 +1,156 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/router";
 import { Paper, TextField, Button, Typography } from "@mui/material";
 import {
-  fetchDraftData,
-  updateDraftData,
+  getDraftSettings,
+  updateDraftSettings,
   getLeagueSettings,
   DraftData,
+  fetchFantasyPlayersByLeague,
 } from "../backend/API";
+import DraftOrderEditor, { FantasyPlayer } from "./DraftOrderEditor";
+import { DraftInfo } from "@/types/DraftTypes";
 
 interface DraftSettingsProps {
   leagueId: string;
+  draftSettings?: DraftInfo;
 }
 
-const DraftSettings: React.FC<DraftSettingsProps> = ({ leagueId }) => {
+const DraftSettings: React.FC<DraftSettingsProps> = ({
+  leagueId,
+  draftSettings,
+}) => {
   const router = useRouter();
 
-  // Helper function to extract plain values from DynamoDB-style objects.
-  const extractValue = (value: any): any => {
+  // Stable extractValue using useCallback
+  const extractValue = useCallback((value: any): any => {
     if (value === null || value === undefined) return "";
     if (typeof value === "object") {
       if ("S" in value) return value.S;
       if ("N" in value) return Number(value.N);
       if ("L" in value && Array.isArray(value.L))
-        return value.L.map(extractValue);
+        return value.L.map((item: any) => extractValue(item));
     }
     return value;
-  };
+  }, []);
 
-  // State for league name
-  const [leagueName, setLeagueName] = useState<string>("");
-  // State for the full draft data
-  const [draftData, setDraftData] = useState<DraftData | null>(null);
-  // Individual fields for updating draft settings
+  // Local state for storing players (already ordered) and ordering (list of IDs)
+  const [orderedPlayers, setOrderedPlayers] = useState<any[]>([]);
+  const [draftOrderIds, setDraftOrderIds] = useState<string[]>([]);
   const [draftStartTime, setDraftStartTime] = useState<string>("");
   const [numberOfRounds, setNumberOfRounds] = useState<number>(5);
-  const [draftOrderStr, setDraftOrderStr] = useState<string>(""); // comma-separated player IDs
-  const [loading, setLoading] = useState<boolean>(false);
-  const [updating, setUpdating] = useState<boolean>(false);
-  const [error, setError] = useState<string | null>(null);
+  const [defaultOrderSaved, setDefaultOrderSaved] = useState(false);
+  const [updating, setUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch draft data on component mount
+  // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
-    const loadDraftData = async () => {
-      setLoading(true);
+    if (draftSettings) {
+      if (draftSettings.draftOrder && draftSettings.draftOrder.length > 0) {
+        setDraftOrderIds(draftSettings.draftOrder);
+      }
+      setDraftStartTime(draftSettings.draftStartTime || "");
+      setNumberOfRounds(draftSettings.numberOfRounds || 5);
+    }
+  }, [draftSettings]);
+
+  // Always fetch fantasy players.
+  useEffect(() => {
+    const fetchPlayers = async () => {
       try {
-        const data: DraftData | null = await fetchDraftData(leagueId);
-        if (data) {
-          setDraftData(data);
-          setDraftStartTime(extractValue(data.draftStartTime) || "");
-          setNumberOfRounds(
-            data.numberOfRounds ? Number(extractValue(data.numberOfRounds)) : 5
+        const players = await fetchFantasyPlayersByLeague(leagueId);
+        // Ensure FantasyPlayerId is a string.
+        const convertedPlayers = players.map((player) => ({
+          ...player,
+          FantasyPlayerId: player.FantasyPlayerId.toString(),
+        }));
+
+        if (
+          draftSettings &&
+          draftSettings.draftOrder &&
+          draftSettings.draftOrder.length > 0
+        ) {
+          // Reorder the fetched players to match the order from draftSettings.
+          const playerMap = new Map<string, any>();
+          convertedPlayers.forEach((player) => {
+            playerMap.set(player.FantasyPlayerId, player);
+          });
+          const sortedPlayers = draftSettings.draftOrder
+            .map((id) => playerMap.get(id))
+            .filter((p): p is any => p !== undefined);
+          // Append players that weren't in the draftSettings order.
+          const remainingPlayers = convertedPlayers.filter(
+            (player) =>
+              !draftSettings.draftOrder!.includes(player.FantasyPlayerId)
           );
-          const draftOrder = data.draft_order
-            ? extractValue(data.draft_order)
-            : [];
-          setDraftOrderStr(
-            Array.isArray(draftOrder) ? draftOrder.join(", ") : ""
+          const finalPlayers = [...sortedPlayers, ...remainingPlayers];
+          setOrderedPlayers(finalPlayers);
+        } else {
+          // No draft order defined yet: use the fetched default order.
+          setOrderedPlayers(convertedPlayers);
+          // Also update the parent state for order.
+          const defaultOrder = convertedPlayers.map(
+            (player) => player.FantasyPlayerId
           );
+          setDraftOrderIds(defaultOrder);
+          // Save the default order back to the DB (only once)
+          if (!defaultOrderSaved) {
+            await updateDraftSettings(leagueId, {
+              draftStartTime,
+              numberOfRounds,
+              draftOrder: defaultOrder,
+            });
+            setDefaultOrderSaved(true);
+          }
         }
       } catch (err: any) {
-        setError(err.message || "Failed to load draft data");
-      }
-      setLoading(false);
-    };
-    loadDraftData();
-  }, [leagueId]);
-
-  // Fetch league settings to retrieve the league name
-  useEffect(() => {
-    const loadLeagueSettings = async () => {
-      try {
-        const settings = await getLeagueSettings(leagueId);
-        if (settings && settings.leagueName) {
-          setLeagueName(
-            typeof settings.leagueName === "object"
-              ? extractValue(settings.leagueName)
-              : settings.leagueName
-          );
-        } else {
-          setLeagueName(leagueId); // Fallback if no league name provided
-        }
-      } catch (error) {
-        console.error("Failed to load league settings", error);
-        setLeagueName(leagueId);
+        console.error("Failed to fetch fantasy players", err);
       }
     };
-    loadLeagueSettings();
-  }, [leagueId]);
 
-  // Handle draft settings update
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    fetchPlayers();
+  }, [
+    leagueId,
+    draftSettings,
+    defaultOrderSaved,
+    draftStartTime,
+    numberOfRounds,
+  ]);
+
+  // Callback when order changes in DraftOrderEditor.
+  const handleOrderChange = (newOrder: string[]) => {
+    setDraftOrderIds(newOrder);
+    // Reorder orderedPlayers array to match newOrder.
+    const playerMap = new Map<string, any>();
+    orderedPlayers.forEach((p) => playerMap.set(p.FantasyPlayerId, p));
+    const reordered = newOrder
+      .map((id) => playerMap.get(id))
+      .filter((p): p is any => p !== undefined);
+    setOrderedPlayers(reordered);
+  };
+
+  const handleSave = async () => {
     setUpdating(true);
     setError(null);
     setSuccessMessage(null);
-
-    // Convert comma-separated draft order string into an array
-    const draftOrder = draftOrderStr
-      .split(",")
-      .map((item) => item.trim())
-      .filter((item) => item.length > 0);
-
     try {
-      await updateDraftData(leagueId, {
+      await updateDraftSettings(leagueId, {
         draftStartTime,
         numberOfRounds,
-        draftOrder,
+        draftOrder: draftOrderIds,
       });
       setSuccessMessage("Draft settings updated successfully!");
     } catch (err: any) {
+      console.error(err);
       setError(err.message || "Failed to update draft settings");
     }
     setUpdating(false);
   };
 
-  // Render the top section that shows draft status information. Here we check if the start time is before the current time.
   const renderDraftStatusSection = () => {
-    if (draftData && draftData.draftStartTime) {
-      const startTimeValue = extractValue(draftData.draftStartTime);
+    if (draftSettings && draftSettings.draftStartTime) {
+      const startTimeValue = extractValue(draftSettings.draftStartTime);
       const draftStartDate = new Date(startTimeValue);
       const now = new Date();
 
@@ -173,14 +205,14 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({ leagueId }) => {
 
       {/* League name header */}
       <Typography variant="h5" sx={{ color: "white", marginBottom: "0.5rem" }}>
-        {leagueName}
+        Draft Settings
       </Typography>
 
       {/* Render draft status info or JOIN button */}
       {renderDraftStatusSection()}
 
       <Typography variant="h6" sx={{ color: "white", marginBottom: "1rem" }}>
-        Draft Settings
+        Update Draft Settings
       </Typography>
 
       {error && (
@@ -194,7 +226,13 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({ leagueId }) => {
         </Typography>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-2">
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          handleSave();
+        }}
+        className="space-y-2"
+      >
         <TextField
           type="datetime-local"
           label="Draft Start Time"
@@ -218,16 +256,13 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({ leagueId }) => {
           InputLabelProps={{ sx: { color: "white !important" } }}
           InputProps={{ sx: { color: "white !important" } }}
         />
-        <TextField
-          type="text"
-          label="Draft Order (comma-separated player IDs)"
-          variant="outlined"
-          fullWidth
-          value={draftOrderStr}
-          onChange={(e) => setDraftOrderStr(e.target.value)}
-          InputLabelProps={{ sx: { color: "white !important" } }}
-          InputProps={{ sx: { color: "white !important" } }}
+
+        {/* Render the drag & drop draft order editor */}
+        <DraftOrderEditor
+          fantasyPlayers={orderedPlayers}
+          onOrderChange={handleOrderChange}
         />
+
         <Button
           fullWidth
           type="submit"

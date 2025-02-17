@@ -3,7 +3,7 @@ import type { AppProps } from "next/app";
 import { AuthProvider, useAuth } from "react-oidc-context";
 import Layout from "@/components/Layout";
 import useUserStore from "@/stores/useUserStore"; // Import the user store
-import { fetchUserDetails } from "../backend/API";
+import "../styles/globals.css";
 import "../styles/tailwind.css";
 import { COGNITO_CONFIG } from "../config/authConfig";
 

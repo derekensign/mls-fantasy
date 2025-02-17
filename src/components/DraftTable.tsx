@@ -15,7 +15,7 @@
 // } from "@mui/material";
 // import {
 //   fetchPlayers2024,
-//   fetchDraftData,
+//   getDraftSettings,
 //   draftPlayer,
 // } from "../../backend/API";
 // import useUserStore from "@/stores/useUserStore";
@@ -37,7 +37,7 @@
 // interface DraftInfo {
 //   league_id: string;
 //   draft_status: string;
-//   draft_order: string[];
+//   draftOrder: string[];
 //   current_turn_team: string;
 //   drafted_players: DraftedPlayer[];
 // }
@@ -84,7 +84,7 @@
 //         }));
 //         setPlayers(formattedPlayers);
 
-//         const draftData = await fetchDraftData(leagueId);
+//         const draftData = await getDraftSettings(leagueId);
 //         console.log("Draft Data:", draftData);
 //         setDraftInfo(draftData);
 
@@ -159,9 +159,9 @@
 //     (justPickedTeam?: string): void => {
 //       if (!draftInfo) return;
 //       const pickingTeam = justPickedTeam || draftInfo.current_turn_team;
-//       const currentIndex = draftInfo.draft_order.indexOf(pickingTeam);
-//       const nextIndex = (currentIndex + 1) % draftInfo.draft_order.length;
-//       const nextTeam = draftInfo.draft_order[nextIndex];
+//       const currentIndex = draftInfo.draftOrder.indexOf(pickingTeam);
+//       const nextIndex = (currentIndex + 1) % draftInfo.draftOrder.length;
+//       const nextTeam = draftInfo.draftOrder[nextIndex];
 
 //       setDraftInfo((prev) =>
 //         prev

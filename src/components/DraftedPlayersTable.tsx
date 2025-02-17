@@ -8,7 +8,7 @@ import {
   TableRow,
   Paper,
 } from "@mui/material";
-import { Player, DraftInfo } from "../types/DraftTypes";
+import { DraftedPlayer, Player, DraftInfo } from "../types/DraftTypes";
 
 // Define an interface for your league data based on what fetchLeagueData returns:
 interface LeagueData {
@@ -31,29 +31,43 @@ export interface FantasyPlayer {
 }
 
 interface DraftedPlayersTableProps {
+  draftedPlayers: DraftedPlayer[];
   players: Player[];
-  draftInfo: DraftInfo | null;
   fantasyPlayers: FantasyPlayer[];
+  draftInfo?: DraftInfo;
   isMobile?: boolean;
 }
 
 const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
+  draftedPlayers,
   players,
-  draftInfo,
   fantasyPlayers,
+  draftInfo,
   isMobile = false,
 }) => {
+  // Determine the total number of teams.
+  // Prefer the draft order array from draftInfo; otherwise, use the number of fantasy players.
+  const totalTeams =
+    draftInfo?.draftOrder?.length || fantasyPlayers.length || 1;
+
   return (
     <div {...{ inert: "true" }}>
-      <TableContainer component={Paper} className="shadow rounded-lg">
-        <Table className="min-w-full divide-y divide-[#B8860B]">
-          <TableHead className="bg-[#B8860B] opacity-90 h-[73px]">
+      <TableContainer
+        component={Paper}
+        className="shadow rounded-lg my-[73px]"
+        sx={{ overflowX: "auto" }}
+      >
+        <Table
+          className="divide-y divide-[#B8860B]"
+          sx={{ tableLayout: "fixed", width: "100%" }}
+        >
+          <TableHead className="bg-[#B8860B] opacity-90 ">
             <TableRow>
               <TableCell>Pick</TableCell>
               {!isMobile && <TableCell>Round</TableCell>}
               <TableCell
-                style={{
-                  width: "120px",
+                sx={{
+                  width: "150px",
                   whiteSpace: "normal",
                   wordBreak: "break-word",
                 }}
@@ -62,7 +76,7 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
               </TableCell>
               <TableCell
                 style={{
-                  minWidth: isMobile ? "80px" : undefined,
+                  minWidth: "150px",
                   whiteSpace: "normal",
                   wordBreak: "break-word",
                 }}
@@ -72,9 +86,9 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
             </TableRow>
           </TableHead>
           <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
-            {draftInfo?.drafted_players.map((draftedPlayer, index) => {
+            {draftedPlayers.map((draftedPlayer, index) => {
               const player = players.find(
-                (p) => p.id === draftedPlayer.player_id
+                (p) => p.id.toString() === draftedPlayer.player_id
               );
               const fantasyPlayer = fantasyPlayers.find(
                 (fp) =>
@@ -85,11 +99,11 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
                 fantasyPlayer?.TeamName?.trim() ||
                 fantasyPlayer?.FantasyPlayerName ||
                 fantasyPlayer?.FantasyPlayerId;
-              console.log(displayedName);
-              const roundNumber =
-                !isMobile && draftInfo
-                  ? Math.ceil((index + 1) / draftInfo.draft_order.length)
-                  : null;
+              // Calculate round number using the overall pick number (index + 1)
+              // Round = floor((pickNumber -1)/ totalTeams) + 1
+              const roundNumber = !isMobile
+                ? Math.floor(index / totalTeams) + 1
+                : null;
               return (
                 <TableRow
                   key={`${draftedPlayer.player_id}-${index}`}
@@ -98,17 +112,17 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
                   <TableCell>{index + 1}</TableCell>
                   {!isMobile && <TableCell>{roundNumber}</TableCell>}
                   <TableCell
-                    style={{
-                      width: "120px",
+                    sx={{
+                      width: "150px",
                       whiteSpace: "normal",
                       wordBreak: "break-word",
                     }}
                   >
-                    {player?.name || "Unknown"}
+                    {player?.name || draftedPlayer.player_id}
                   </TableCell>
                   <TableCell
                     style={{
-                      minWidth: isMobile ? "80px" : undefined,
+                      minWidth: "300px",
                       whiteSpace: "normal",
                       wordBreak: "break-word",
                     }}

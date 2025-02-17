@@ -10,10 +10,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const auth = useAuth();
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-black">
       <Navbar auth={auth} />
-      <main className="bg-black">{children}</main>
-    </>
+      <main className="flex-grow">{children}</main>
+    </div>
   );
 };
 

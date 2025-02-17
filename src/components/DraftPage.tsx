@@ -2,7 +2,7 @@
 // import { Paper, Button, TextField } from "@mui/material";
 // import {
 //   fetchPlayers2024,
-//   fetchDraftData,
+//   getDraftSettings,
 //   draftPlayer,
 // } from "../../backend/API";
 // import useUserStore from "@/stores/useUserStore";
@@ -43,7 +43,7 @@
 //         }));
 //         setPlayers(formattedPlayers);
 
-//         const draftData = await fetchDraftData(leagueId);
+//         const draftData = await getDraftSettings(leagueId);
 //         console.log("Draft Data:", draftData);
 //         setDraftInfo(draftData);
 

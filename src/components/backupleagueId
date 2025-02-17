@@ -2,7 +2,7 @@
 // import { useRouter } from "next/router";
 // import {
 //   fetchPlayers2024,
-//   fetchDraftData,
+//   getDraftSettings,
 //   draftPlayer,
 //   fetchFantasyPlayersByLeague,
 // } from "../../../backend/API";
@@ -72,7 +72,7 @@
 //           }));
 //           setPlayers(formattedPlayers);
 
-//           const draftData = await fetchDraftData(String(leagueId));
+//           const draftData = await getDraftSettings(String(leagueId));
 //           setDraftInfo(draftData);
 //           setTimer(30);
 //         } catch (error) {
@@ -113,8 +113,8 @@
 
 //       const isOddRound = round % 2 === 1;
 //       const order = isOddRound
-//         ? draftInfo.draft_order
-//         : [...draftInfo.draft_order].reverse();
+//         ? draftInfo.draftOrder
+//         : [...draftInfo.draftOrder].reverse();
 //       const currentIndex = order.indexOf(currentTeam);
 //       let nextTeam: string;
 //       let newRound = round;
@@ -130,8 +130,8 @@
 //         }
 //         const nextOrder =
 //           newRound % 2 === 1
-//             ? draftInfo.draft_order
-//             : [...draftInfo.draft_order].reverse();
+//             ? draftInfo.draftOrder
+//             : [...draftInfo.draftOrder].reverse();
 //         nextTeam = nextOrder[0];
 //       } else {
 //         nextTeam = order[currentIndex + 1];
