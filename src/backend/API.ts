@@ -1,4 +1,5 @@
 import axios, { AxiosResponse } from "axios";
+import { DraftInfo } from "../types/DraftTypes"; // Use the single source of truth
 
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
 
@@ -51,27 +52,9 @@ export interface DraftData {
   draftOrder: string[];
   draft_status: string;
   drafted_players: string[];
-  // If you add these fields via the update endpoint...
   draftStartTime?: string;
   numberOfRounds?: number;
   activeParticipants?: string[];
-  sessionEnded?: boolean;
-}
-
-export interface DraftInfo {
-  league_id: string;
-  current_turn_team?: string;
-  draftOrder: string[];
-  draft_status: string;
-  drafted_players: {
-    player_id: number;
-    team_drafted_by: string;
-    draft_time: string;
-  }[];
-  draftStartTime?: string;
-  numberOfRounds?: number;
-  activeParticipants?: string[];
-  current_team_turn_ends?: string;
 }
 
 export const fetchGoldenBootTable = async (): Promise<
@@ -174,16 +157,27 @@ export const fetchUserDetails = async (
 // Existing function for fetching draft data using Axios.
 export const getDraftSettings = async (
   leagueId: string
-): Promise<DraftInfo | null> => {
-  try {
-    const response: AxiosResponse<DraftInfo> = await axios.get(
-      `${BASE_URL}/league/${leagueId}/draft-settings`
-    );
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching draft data:", error);
-    return null;
-  }
+): Promise<DraftInfo> => {
+  const response: AxiosResponse = await axios.get(
+    `${BASE_URL}/league/${leagueId}/draft-settings`
+  );
+  const data = response.data;
+
+  // Convert incoming data to match DraftInfo.
+  const draftInfo: DraftInfo = {
+    league_id: data.league_id || "",
+    draft_status: data.draft_status || "",
+    draftOrder: data.draftOrder
+      ? data.draftOrder.map((item: any) => (item.S ? item.S : item))
+      : [],
+    current_turn_team: data.current_turn_team ?? "",
+    draftStartTime: data.draftStartTime || "",
+    numberOfRounds: data.numberOfRounds || 5,
+    activeParticipants: data.activeParticipants || [],
+    current_team_turn_ends: data.current_team_turn_ends || "",
+  };
+
+  return draftInfo;
 };
 
 // New function for the /players/{league_id} route
@@ -240,7 +234,6 @@ export const updateDraftSettings = async (
     numberOfRounds?: number;
     draftOrder?: string[];
     current_turn_team?: string;
-    sessionEnded?: boolean;
     current_team_turn_ends?: string;
   }
 ): Promise<DraftInfo | null> => {

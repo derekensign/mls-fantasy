@@ -48,7 +48,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
   const [hasJoinedSession, setHasJoinedSession] = useState<boolean>(false);
   const [drafting, setDrafting] = useState<boolean>(false);
   const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
-
+  const [draftOver, setDraftOver] = useState<boolean>(false);
   const { userDetails } = useUserStore();
   const userFantasyPlayerId = userDetails?.FantasyPlayerId?.toString();
   const userIsAdmin = true; // TODO: Add this to the user details.
@@ -96,37 +96,35 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
           : formattedPlayers
       );
 
+      if (!leagueId) return;
       // Fetch and process draft settings.
       const draftData = await getDraftSettings(String(leagueId));
-      const plainDraftOrder =
-        draftData && draftData.draftOrder
-          ? draftData.draftOrder.map((item: any) => (item.S ? item.S : item))
-          : [];
+      const plainDraftOrder: string[] = draftData?.draftOrder || [];
 
+      // Ensure current_turn_team is always a string by using nullish coalescing
       const fixedDraftData: DraftInfo = {
         ...draftData,
         draftOrder: plainDraftOrder,
         league_id: draftData?.league_id || "",
         draft_status: draftData?.draft_status || "",
         current_turn_team:
-          draftData?.current_turn_team || plainDraftOrder[0] || "",
+          (draftData?.current_turn_team ?? plainDraftOrder[0]) || "",
         draftStartTime: draftData?.draftStartTime || "",
         numberOfRounds: draftData?.numberOfRounds || 5,
         activeParticipants: draftData?.activeParticipants || [],
       };
+
       // Update draftInfo only if changed.
       console.log("fixedDraftData", fixedDraftData);
-      setDraftInfo((prev) =>
-        JSON.stringify(prev) === JSON.stringify(fixedDraftData)
-          ? prev
-          : fixedDraftData
-      );
+      setDraftInfo(fixedDraftData);
 
       // Fetch and sort drafted players.
       const draftedPlayersData = await fetchDraftedPlayers(String(leagueId));
       draftedPlayersData.sort(
-        (a, b) =>
-          new Date(a.draft_time).getTime() - new Date(b.draft_time).getTime()
+        (
+          a: { draft_time: string | number | Date },
+          b: { draft_time: string | number | Date }
+        ) => new Date(a.draft_time).getTime() - new Date(b.draft_time).getTime()
       );
       setDraftedPlayers((prev) =>
         JSON.stringify(prev) === JSON.stringify(draftedPlayersData)
@@ -156,12 +154,15 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
 
   // Use polling on loadDraftData.
   useEffect(() => {
-    loadDraftData();
-    const intervalId = setInterval(() => {
+    if (draftOver) return; // Skip polling if draft is over.
+
+    const interval = setInterval(() => {
+      // Call your API or polling function only when draftOver is false
       loadDraftData();
     }, 5000);
-    return () => clearInterval(intervalId);
-  }, [loadDraftData]);
+
+    return () => clearInterval(interval);
+  }, [draftOver, leagueId]);
 
   // Auto-draft countdown effect: Only runs in advanced mode.
   useEffect(() => {
@@ -184,12 +185,16 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     [draftInfo, fantasyPlayers]
   );
   const totalRounds = useMemo(
-    () => (draftInfo ? draftInfo.numberOfRounds : 0),
+    () => (draftInfo ? draftInfo.numberOfRounds : 5),
     [draftInfo]
   );
-  const totalPicks = totalTeams * totalRounds;
+  const totalPicks = totalTeams * (totalRounds || 5);
   const overallPickNumber = (draftedPlayers.length ?? 0) + 1;
-  const draftOver = draftedPlayers.length >= totalPicks;
+
+  useEffect(() => {
+    setDraftOver(draftedPlayers.length >= totalPicks);
+  }, [draftedPlayers, totalPicks]);
+
   const computedRound =
     overallPickNumber > 0
       ? Math.floor((overallPickNumber - 1) / totalTeams) + 1
@@ -224,6 +229,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
           current_turn_team: currentTeam,
         });
         const updatedDraftInfo = await getDraftSettings(String(leagueId));
+
         setDraftInfo(updatedDraftInfo);
         return;
       }
@@ -297,7 +303,6 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       );
       setDraftedPlayers(draftedPlayersData);
 
-      // (Optionally) re-fetch the player data.
       const rawData = await fetchPlayers2024();
       const formattedPlayers: Player[] = rawData.map((item: any) => ({
         id: item.id.S,

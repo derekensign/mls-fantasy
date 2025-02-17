@@ -107,8 +107,10 @@ const DraftPage: React.FC = () => {
         return 0;
       } else {
         // Sort by other columns
-        if (a[key] < b[key]) return direction === "asc" ? -1 : 1;
-        if (a[key] > b[key]) return direction === "asc" ? 1 : -1;
+        const safeValA = a[key] ?? "";
+        const safeValB = b[key] ?? "";
+        if (safeValA < safeValB) return direction === "asc" ? -1 : 1;
+        if (safeValA > safeValB) return direction === "asc" ? 1 : -1;
         return 0;
       }
     });

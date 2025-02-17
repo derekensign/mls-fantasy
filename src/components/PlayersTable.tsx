@@ -61,8 +61,13 @@ const PlayersTable: React.FC<PlayersTableProps> = ({
         // For other columns (name, team, goals_2024)
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
-        if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-        if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+
+        // Use nullish coalescing to guarantee that a value is provided:
+        const safeValA = valA ?? "";
+        const safeValB = valB ?? "";
+
+        if (safeValA < safeValB) return sortConfig.direction === "asc" ? -1 : 1;
+        if (safeValA > safeValB) return sortConfig.direction === "asc" ? 1 : -1;
         return 0;
       }
     });

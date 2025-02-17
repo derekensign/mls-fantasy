@@ -18,8 +18,6 @@ export interface DraftInfo {
   draftOrder: string[];
   current_turn_team: string;
   draftStartTime: string;
-  maxRounds?: number;
-  sessionEnded?: boolean;
   activeParticipants?: string[];
   numberOfRounds?: number;
   current_team_turn_ends?: string;

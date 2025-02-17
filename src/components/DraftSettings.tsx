@@ -67,8 +67,8 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
     // Only fetch if no initial order exists.
     if (
       !draftSettings ||
-      !draftSettings.draft_order ||
-      draftSettings.draft_order.length === 0
+      !draftSettings.draftOrder ||
+      draftSettings.draftOrder.length === 0
     ) {
       const fetchFantasyPlayers = async () => {
         try {

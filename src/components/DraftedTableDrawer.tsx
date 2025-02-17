@@ -9,14 +9,20 @@ import {
 import { useTheme } from "@mui/material/styles";
 import CloseIcon from "@mui/icons-material/Close";
 import DraftedPlayersTable from "./DraftedPlayersTable";
-import { Player, DraftInfo } from "../types/DraftTypes";
-import { FantasyPlayer } from "./DraftedPlayersTable";
+import {
+  Player,
+  DraftInfo,
+  FantasyPlayer,
+  DraftedPlayer,
+} from "../types/DraftTypes";
+
 interface DraftedTableDrawerProps {
   open: boolean;
   onClose: () => void;
   players: Player[];
-  draftInfo: DraftInfo | null;
+  draftInfo: DraftInfo;
   fantasyPlayers: FantasyPlayer[];
+  draftedPlayers: DraftedPlayer[];
 }
 
 const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
@@ -25,6 +31,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
   players,
   draftInfo,
   fantasyPlayers,
+  draftedPlayers,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
@@ -58,6 +65,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
           players={players}
           draftInfo={draftInfo}
           fantasyPlayers={fantasyPlayers}
+          draftedPlayers={draftedPlayers}
           isMobile={isMobile}
         />
       </Box>

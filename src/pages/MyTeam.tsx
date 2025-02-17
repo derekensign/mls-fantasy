@@ -31,15 +31,22 @@ export default function MyTeam() {
   const { userDetails, setUserDetails } = useUserStore();
 
   const [team, setTeam] = useState<Team | null>(null);
-  // New state for the player's name
   const [playerName, setPlayerName] = useState<string>("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
-  // After: defaultTeam is memoized and won't change on every render.
-  const defaultTeam = useMemo(() => ({ id: "foo", name: "Default Team" }), []);
+  // Update defaultTeam to match the Team interface.
+  const defaultTeam: Team = useMemo(
+    () => ({
+      teamName: "Default Team",
+      leagueId: "",
+      totalGoals: 0,
+      players: [],
+    }),
+    []
+  );
 
   // Fetch team data once the user is authenticated
   useEffect(() => {
@@ -54,7 +61,7 @@ export default function MyTeam() {
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({ email: auth.user.profile.email }),
+              body: JSON.stringify({ email: auth.user!.profile.email }),
             }
           );
 
@@ -70,7 +77,7 @@ export default function MyTeam() {
                 setPlayerName("");
               }
             } else {
-              // No team exists—initialize with default values so the user can complete their profile.
+              // No team exists — initialize with defaultTeam.
               setTeam(defaultTeam);
               setPlayerName("");
             }
@@ -79,7 +86,7 @@ export default function MyTeam() {
             try {
               const errObj = JSON.parse(errText);
               if (errObj.message && errObj.message.includes("No teams found")) {
-                // Instead of showing an error, let the user complete their profile by using a default team.
+                // Instead of showing an error, let the user complete their profile.
                 setTeam(defaultTeam);
                 setPlayerName("");
               } else {
@@ -98,9 +105,9 @@ export default function MyTeam() {
       };
       fetchTeamData();
     }
-  }, [auth.isAuthenticated, auth.user?.profile.email, defaultTeam]);
+  }, [auth.isAuthenticated, auth.user?.profile.email, defaultTeam, auth.user]);
 
-  // Handler for updating Team Name, which is stored within the team object
+  // Handler for updating Team Name
   const handleTeamNameChange = (e: ChangeEvent<HTMLInputElement>) => {
     const { value } = e.target;
     setTeam((prevTeam) =>
@@ -108,7 +115,7 @@ export default function MyTeam() {
     );
   };
 
-  // Handler for updating Player Name, stored in its own state
+  // Handler for updating Player Name
   const handlePlayerNameChange = (e: ChangeEvent<HTMLInputElement>) => {
     setPlayerName(e.target.value);
   };
@@ -117,9 +124,7 @@ export default function MyTeam() {
   const handleLogoChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setLogoFile(e.target.files[0]);
-      // For simplicity, we assume the file is uploaded elsewhere
-      // and its URL is then set into team.teamLogo.
-      // You might want to integrate an S3 upload flow here.
+      // For simplicity, assume file upload is handled elsewhere.
     }
   };
 
@@ -136,28 +141,27 @@ export default function MyTeam() {
     }
     setSaving(true);
     try {
-      // Prepare the payload.
-      // We pull FantasyPlayerId from userDetails if it exists; otherwise, leave it undefined.
+      // Prepare payload.
       const payload = {
         FantasyPlayerId: userDetails?.FantasyPlayerId,
         TeamName: team.teamName,
-        // Pass along the optional TeamLogo if it exists (this might be a URL after image upload).
         TeamLogo: team.teamLogo,
-        // We include FantasyPlayerName for the player's name.
         FantasyPlayerName: playerName,
-        Email: auth.user?.profile.email,
+        Email: auth.user!.profile.email!,
       };
       const updatedProfile = await updateTeamProfile(payload);
       console.log("Updated profile:", updatedProfile);
       alert("Profile updated successfully!");
-      // Optionally update the user store with the new profile details.
+
+      // Update user details. Since the API response doesn't include FantasyPlayerName or TeamLogo,
+      // we use our existing data for those fields.
       setUserDetails({
         ...userDetails,
         FantasyPlayerId: updatedProfile.FantasyPlayerId,
-        FantasyPlayerName: updatedProfile.FantasyPlayerName,
+        FantasyPlayerName: playerName,
         TeamName: updatedProfile.TeamName,
-        TeamLogo: updatedProfile.TeamLogo,
-        Email: auth.user?.profile.email,
+        email: auth.user!.profile.email ?? "",
+        LeagueId: userDetails?.LeagueId ?? "",
       });
     } catch (error: any) {
       console.error("Error updating profile:", error);
@@ -167,7 +171,6 @@ export default function MyTeam() {
     }
   };
 
-  // Redirect to login if the user is not authenticated
   if (!auth.isAuthenticated) {
     return (
       <div className="text-center">
@@ -195,7 +198,7 @@ export default function MyTeam() {
             {team.teamName ? "Update Profile" : "Complete Your Profile"}
           </h2>
           <form onSubmit={handleSubmit}>
-            {/* Display email address (read-only) */}
+            {/* Email Address (read-only) */}
             <div className="mb-4">
               <label className="block font-semibold mb-1" htmlFor="email">
                 Email Address
@@ -204,12 +207,12 @@ export default function MyTeam() {
                 id="email"
                 name="email"
                 type="email"
-                value={auth.user?.profile.email || ""}
+                value={auth.user!.profile.email ?? ""}
                 readOnly
                 className="w-full p-2 border rounded bg-gray-100"
               />
             </div>
-            {/* Team Name (required) */}
+            {/* Team Name */}
             <div className="mb-4">
               <label className="block font-semibold mb-1" htmlFor="teamName">
                 Team Name *
@@ -224,7 +227,7 @@ export default function MyTeam() {
                 className="w-full p-2 border rounded"
               />
             </div>
-            {/* Player Name (required) */}
+            {/* Player Name */}
             <div className="mb-4">
               <label className="block font-semibold mb-1" htmlFor="playerName">
                 Player Name *
@@ -240,7 +243,7 @@ export default function MyTeam() {
                 className="w-full p-2 border rounded"
               />
             </div>
-            {/* Team Logo (optional) */}
+            {/* Team Logo */}
             <div className="mb-4">
               <label className="block font-semibold mb-1" htmlFor="teamLogo">
                 Team Logo (optional)
@@ -278,7 +281,7 @@ export default function MyTeam() {
         </div>
       )}
 
-      {/* Render the team roster */}
+      {/* Render team roster */}
       {team && team.players && (
         <div className="max-w-3xl mx-auto bg-[#B8860B] text-black rounded-lg p-4 mb-4 shadow-md">
           <h2 className="text-2xl font-semibold">{team.teamName}</h2>

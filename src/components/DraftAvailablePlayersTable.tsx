@@ -10,7 +10,12 @@ import {
   Button,
   TableSortLabel,
 } from "@mui/material";
-import { Player, DraftInfo, DraftedPlayer } from "../types/DraftTypes";
+import {
+  Player,
+  DraftInfo,
+  DraftedPlayer,
+  FantasyPlayer,
+} from "../types/DraftTypes";
 
 type SortKey = keyof Player | "actions";
 
@@ -25,7 +30,8 @@ interface DraftAvailablePlayersTableProps {
   handleDraft: (player: Player) => void;
   draftInfo: DraftInfo | null;
   userFantasyPlayerId?: string;
-  fantasyPlayers: any[];
+  fantasyPlayers: FantasyPlayer[];
+  countdown: number;
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -35,6 +41,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   draftInfo,
   userFantasyPlayerId,
   fantasyPlayers,
+  countdown,
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -71,8 +78,10 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
     } else {
       const valA = a[sortConfig.key];
       const valB = b[sortConfig.key];
-      if (valA < valB) return sortConfig.direction === "asc" ? -1 : 1;
-      if (valA > valB) return sortConfig.direction === "asc" ? 1 : -1;
+      const safeValA = valA ?? "";
+      const safeValB = valB ?? "";
+      if (safeValA < safeValB) return sortConfig.direction === "asc" ? -1 : 1;
+      if (safeValA > safeValB) return sortConfig.direction === "asc" ? 1 : -1;
       return 0;
     }
   });
@@ -348,6 +357,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
           className="mb-4 p-2 border border-gray-300 rounded w-full max-w-md"
         />
       </div>
+      <p>Countdown: {countdown}</p>
       {renderMobileView(sortedPlayers)}
       {renderDesktopView(sortedPlayers)}
     </div>

@@ -61,6 +61,7 @@ const LeaguePage: React.FC<LeaguePageProps> = ({
       sx={{ minHeight: "100vh" }}
     >
       {/* Render league header using the leagueName */}
+
       <Typography
         variant="h4"
         component="h1"
@@ -111,7 +112,9 @@ const LeaguePage: React.FC<LeaguePageProps> = ({
           <LeagueSettings
             leagueId={String(leagueId)}
             currentDraftStartTime={draftSettings?.draftStartTime}
-            onDraftTimeUpdated={(newTime) => setDraftStartTime(newTime)}
+            onDraftTimeUpdated={(newTime) =>
+              setDraftStartTime(newTime ? new Date(newTime) : null)
+            }
           />
         ) : (
           <div className="text-white">
