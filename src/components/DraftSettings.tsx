@@ -43,7 +43,6 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
   const [updating, setUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
 
   // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
@@ -167,30 +166,6 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
       );
     }
   };
-
-  const fetchSettings = async () => {
-    try {
-      const settings = await getDraftSettings(leagueId);
-      console.log("Fetched updated draft settings:", settings);
-      setDraftSettings(settings);
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching draft settings:", error);
-    }
-  };
-
-  // Fetch initially.
-  useEffect(() => {
-    fetchSettings();
-  }, [leagueId]);
-
-  // Poll every 5 seconds (adjust as needed).
-  useEffect(() => {
-    const intervalId = setInterval(() => {
-      fetchSettings();
-    }, 5000);
-    return () => clearInterval(intervalId);
-  }, [leagueId]);
 
   return (
     <Paper

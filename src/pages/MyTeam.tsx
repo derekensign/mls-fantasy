@@ -97,7 +97,7 @@ export default function MyTeam() {
       };
       fetchTeamData();
     }
-  }, [auth.isAuthenticated, auth.user?.profile.email]);
+  }, [auth.isAuthenticated, auth.user?.profile.email, defaultTeam]);
 
   // Handler for updating Team Name, which is stored within the team object
   const handleTeamNameChange = (e: ChangeEvent<HTMLInputElement>) => {
