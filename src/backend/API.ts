@@ -1,5 +1,4 @@
 import axios, { AxiosResponse } from "axios";
-import { DraftInfo } from "../types/DraftTypes";
 
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
 

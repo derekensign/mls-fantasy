@@ -1,8 +1,15 @@
-import React, { useState, useEffect, ChangeEvent, FormEvent } from "react";
+import React, {
+  useState,
+  useEffect,
+  ChangeEvent,
+  FormEvent,
+  useMemo,
+} from "react";
 import { useRouter } from "next/router";
 import { useAuth } from "react-oidc-context";
 import { updateTeamProfile } from "@/backend/API";
 import useUserStore from "@/stores/useUserStore";
+import Image from "next/image";
 
 // Define types for player and team
 type Player = {
@@ -31,14 +38,8 @@ export default function MyTeam() {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<string>("");
 
-  // Default team object to use when no team exists yet
-  const defaultTeam: Team = {
-    teamName: "",
-    leagueId: "",
-    totalGoals: 0,
-    players: [],
-    teamLogo: "",
-  };
+  // After: defaultTeam is memoized and won't change on every render.
+  const defaultTeam = useMemo(() => ({ id: "foo", name: "Default Team" }), []);
 
   // Fetch team data once the user is authenticated
   useEffect(() => {
@@ -253,9 +254,11 @@ export default function MyTeam() {
                 className="w-full"
               />
               {team.teamLogo && (
-                <img
+                <Image
                   src={team.teamLogo}
                   alt="Team Logo"
+                  width={200}
+                  height={200}
                   className="mt-2 h-20"
                 />
               )}
