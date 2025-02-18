@@ -207,5 +207,7 @@ export async function getStaticProps({
       draftSettings,
       commissionerEmail,
     },
+    // Revalidate this page every 60 seconds (adjust as needed)
+    revalidate: 60,
   };
 }
