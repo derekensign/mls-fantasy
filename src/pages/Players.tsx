@@ -10,7 +10,7 @@ import {
   TableSortLabel,
   Button,
 } from "@mui/material";
-import { fetchPlayers2024 } from "../backend/API";
+import { fetchPlayers2025 } from "../backend/API";
 
 interface Player {
   id: string;
@@ -41,7 +41,7 @@ const DraftPage: React.FC = () => {
       setLoading(true);
 
       // Fetch players
-      const rawData = await fetchPlayers2024();
+      const rawData = await fetchPlayers2025();
       const formattedData: Player[] = rawData.map((item: any) => ({
         id: item.id.S,
         name: item.name.S,

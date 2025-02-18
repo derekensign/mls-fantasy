@@ -7,7 +7,7 @@ import React, {
 } from "react";
 import { useRouter } from "next/router";
 import {
-  fetchPlayers2024,
+  fetchPlayers2025,
   draftPlayer,
   fetchFantasyPlayersByLeague,
   fetchDraftedPlayers,
@@ -81,7 +81,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     if (!draftInfo) setLoading(true);
     try {
       // Fetch and format players.
-      const rawData = await fetchPlayers2024();
+      const rawData = await fetchPlayers2025();
       const formattedPlayers: Player[] = rawData.map((item: any) => ({
         id: item.id.S,
         name: item.name.S,
@@ -151,6 +151,28 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       setLoading(false);
     }
   }, [leagueId, simpleMode, draftInfo]);
+
+  // Initialization: set current_turn_team to draftOrder[0] if not set and it's the first ever turn.
+  useEffect(() => {
+    const initializeDraftTurn = async () => {
+      if (
+        draftInfo &&
+        draftInfo.draftOrder &&
+        draftInfo.draftOrder.length > 0
+      ) {
+        // Check if there are no drafted players yet and current_turn_team is not set
+        if (draftedPlayers.length === 0 && !draftInfo.current_turn_team) {
+          await updateDraftSettings(String(leagueId), {
+            current_turn_team: draftInfo.draftOrder[0],
+          });
+          const updatedDraftInfo = await getDraftSettings(String(leagueId));
+          setDraftInfo(updatedDraftInfo);
+        }
+      }
+    };
+
+    initializeDraftTurn();
+  }, [draftInfo, draftedPlayers, leagueId]);
 
   // Use polling on loadDraftData.
   useEffect(() => {
@@ -298,7 +320,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       );
       setDraftedPlayers(draftedPlayersData);
 
-      const rawData = await fetchPlayers2024();
+      const rawData = await fetchPlayers2025();
       const formattedPlayers: Player[] = rawData.map((item: any) => ({
         id: item.id.S,
         name: item.name.S,

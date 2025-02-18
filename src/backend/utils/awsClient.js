@@ -7,6 +7,7 @@ const {
   QueryCommand,
   UpdateCommand,
 } = require("@aws-sdk/lib-dynamodb");
+const { unmarshall } = require("@aws-sdk/util-dynamodb");
 
 // Load environment variables in non-production environments
 if (process.env.NODE_ENV !== "production") {
@@ -31,4 +32,5 @@ module.exports = {
   PutCommand,
   QueryCommand,
   UpdateCommand,
+  unmarshall,
 };

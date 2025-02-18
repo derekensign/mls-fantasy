@@ -69,7 +69,7 @@ export const fetchGoldenBootTable = async (): Promise<
   }
 };
 
-export const fetchPlayers2024 = async (): Promise<Player[]> => {
+export const fetchPlayers2025 = async (): Promise<Player[]> => {
   try {
     const response: AxiosResponse<Player[]> = await axios.get(
       `${BASE_URL}/get-all-players`
