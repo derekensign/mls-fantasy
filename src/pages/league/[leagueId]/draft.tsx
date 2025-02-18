@@ -53,6 +53,9 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
   const userFantasyPlayerId = userDetails?.FantasyPlayerId?.toString();
   const userIsAdmin = true; // TODO: Add this to the user details.
 
+  // useRef flag to ensure we run initialization only once.
+  const initializedRef = useRef(false);
+
   // Load fantasy players (to translate team IDs into names)
   useEffect(() => {
     if (leagueId) {
@@ -152,27 +155,31 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     }
   }, [leagueId, simpleMode, draftInfo]);
 
-  // Initialization: set current_turn_team to draftOrder[0] if not set and it's the first ever turn.
   useEffect(() => {
     const initializeDraftTurn = async () => {
-      if (
-        draftInfo &&
-        draftInfo.draftOrder &&
-        draftInfo.draftOrder.length > 0
-      ) {
-        // Check if there are no drafted players yet and current_turn_team is not set
-        if (draftedPlayers.length === 0 && !draftInfo.current_turn_team) {
-          await updateDraftSettings(String(leagueId), {
-            current_turn_team: draftInfo.draftOrder[0],
-          });
-          const updatedDraftInfo = await getDraftSettings(String(leagueId));
-          setDraftInfo(updatedDraftInfo);
-        }
-      }
+      console.log("initializing draft turn", {
+        draftOrder: draftInfo?.draftOrder,
+        draftedPlayersLength: draftedPlayers.length,
+      });
+      await updateDraftSettings(String(leagueId), {
+        current_turn_team: draftInfo?.draftOrder[0],
+      });
+      const updatedDraftInfo = await getDraftSettings(String(leagueId));
+      setDraftInfo(updatedDraftInfo);
+      initializedRef.current = true; // mark that initialization has run
     };
 
-    initializeDraftTurn();
-  }, [draftInfo, draftedPlayers, leagueId]);
+    // Run initialization only if we haven't already, we have a draft order,
+    // and no players have been drafted.
+    if (
+      !initializedRef.current &&
+      draftedPlayers.length === 0 &&
+      draftInfo &&
+      draftInfo?.draftOrder?.length > 0
+    ) {
+      initializeDraftTurn();
+    }
+  }, [leagueId, draftedPlayers.length, draftInfo, draftInfo?.draftOrder]);
 
   // Use polling on loadDraftData.
   useEffect(() => {
@@ -237,24 +244,11 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     async (currentTeam: string) => {
       if (!draftInfo) return;
       const totalTeams = draftInfo.draftOrder.length;
-      // overallPickNumber is 1-indexed (e.g. first pick = 1)
+      // overallPickNumber is 1-indexed (first pick = 1)
       const overallPickNumber = draftedPlayers.length + 1;
       const computedRound =
         Math.floor((overallPickNumber - 1) / totalTeams) + 1;
       const isEvenRound = computedRound % 2 === 0;
-
-      // If it's the first pick of a new round (and not the very first pick overall),
-      // then the current team (i.e. the last team of the previous round) picks again.
-      if (overallPickNumber !== 1 && overallPickNumber % totalTeams === 1) {
-        console.log("New round: same team picks again:", currentTeam);
-        await updateDraftSettings(String(leagueId), {
-          current_turn_team: currentTeam,
-        });
-        const updatedDraftInfo = await getDraftSettings(String(leagueId));
-
-        setDraftInfo(updatedDraftInfo);
-        return;
-      }
 
       // Determine the snake order for this round.
       const order = isEvenRound

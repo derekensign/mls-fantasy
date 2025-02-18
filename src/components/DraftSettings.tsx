@@ -51,10 +51,7 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
         const plainDraftOrder = draftSettings.draftOrder.map((item: any) =>
           item.S ? item.S : extractValue(item)
         );
-        console.log(
-          "Initializing draftOrderIds from draftSettings:",
-          plainDraftOrder
-        );
+
         setDraftOrderIds(plainDraftOrder);
       }
       setDraftStartTime(draftSettings.draftStartTime || "");
@@ -64,38 +61,52 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
 
   // Always fetch fantasy players.
   useEffect(() => {
-    // Only fetch if no initial order exists.
-    if (
-      !draftSettings ||
-      !draftSettings.draftOrder ||
-      draftSettings.draftOrder.length === 0
-    ) {
-      const fetchFantasyPlayers = async () => {
-        try {
-          const players = await fetchFantasyPlayersByLeague(leagueId);
-          const convertedPlayers = players.map((player) => ({
-            ...player,
-            FantasyPlayerId: player.FantasyPlayerId.toString(),
-          }));
+    const fetchAndSetFantasyPlayers = async () => {
+      try {
+        // This fetch happens regardless of whether a draft order exists.
+        const players = await fetchFantasyPlayersByLeague(leagueId);
+        const convertedPlayers = players.map((player) => ({
+          ...player,
+          FantasyPlayerId: player.FantasyPlayerId.toString(),
+        }));
+
+        if (
+          !draftSettings ||
+          !draftSettings.draftOrder ||
+          draftSettings.draftOrder.length === 0
+        ) {
+          // If no draft order exists in settings, simply use the converted player order.
           setOrderedPlayers(convertedPlayers);
 
-          // If still no order has been set, use fantasyPlayers as fallback.
+          // Also, if no draftOrderIds have been set, use the player IDs as a fallback.
           if (convertedPlayers.length > 0 && draftOrderIds.length === 0) {
             setDraftOrderIds(
               convertedPlayers.map((player) => player.FantasyPlayerId)
             );
           }
-        } catch (err: any) {
-          console.error("Failed to fetch fantasy players", err);
+        } else {
+          // If a draft order exists, extract the ordered ids from draftSettings.
+          const orderFromSettings = draftSettings.draftOrder.map((item: any) =>
+            item.S ? item.S : extractValue(item)
+          );
+          // Create a shallow copy and sort the fetched players to match the setting.
+          const sortedPlayers = [...convertedPlayers].sort(
+            (a, b) =>
+              orderFromSettings.indexOf(a.FantasyPlayerId) -
+              orderFromSettings.indexOf(b.FantasyPlayerId)
+          );
+          setOrderedPlayers(sortedPlayers);
         }
-      };
-      fetchFantasyPlayers();
-    }
-  }, [leagueId, draftSettings, draftOrderIds.length]);
+      } catch (err: any) {
+        console.error("Failed to fetch fantasy players", err);
+      }
+    };
+
+    fetchAndSetFantasyPlayers();
+  }, [leagueId, draftSettings, draftOrderIds.length, extractValue]);
 
   // Callback when order changes in DraftOrderEditor.
   const handleOrderChange = (newOrder: string[]) => {
-    console.log("handleOrderChange: new order received:", newOrder);
     setDraftOrderIds(newOrder);
 
     // Use the full list of teams (fantasyPlayers) instead of orderedPlayers which might be empty.
@@ -105,7 +116,6 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
     const reordered = newOrder
       .map((id) => playerMap.get(id))
       .filter((p): p is any => p !== undefined);
-    console.log("handleOrderChange: reordered players:", reordered);
     setOrderedPlayers(reordered);
   };
 
@@ -113,18 +123,13 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
     setUpdating(true);
     setError(null);
     setSuccessMessage(null);
-    console.log("handleSave: saving draft settings with data:", {
-      draftStartTime,
-      numberOfRounds,
-      draftOrder: draftOrderIds,
-    });
+
     try {
       await updateDraftSettings(leagueId, {
         draftStartTime,
         numberOfRounds,
         draftOrder: draftOrderIds,
       });
-      console.log("handleSave: successfully updated draft settings in DB.");
       setSuccessMessage("Draft settings updated successfully!");
     } catch (err: any) {
       console.error("handleSave: Error updating draft settings:", err);
