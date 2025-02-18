@@ -53,7 +53,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
   const userFantasyPlayerId = userDetails?.FantasyPlayerId?.toString();
   const userIsAdmin = true; // TODO: Add this to the user details.
 
-  // useRef flag to ensure we run initialization only once.
+  // This ref will ensure that we run initialization only once.
   const initializedRef = useRef(false);
 
   // Load fantasy players (to translate team IDs into names)
@@ -66,6 +66,8 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
           setFantasyPlayers(data);
         } catch (error) {
           console.error("Error fetching fantasy players:", error);
+        } finally {
+          setLoading(false);
         }
       };
       loadFantasyPlayers();
@@ -155,43 +157,12 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     }
   }, [leagueId, simpleMode, draftInfo]);
 
+  // This effect simply loads the draft settings on mount.
   useEffect(() => {
-    const initializeDraftTurn = async () => {
-      console.log("initializing draft turn", {
-        draftOrder: draftInfo?.draftOrder,
-        draftedPlayersLength: draftedPlayers.length,
-      });
-      await updateDraftSettings(String(leagueId), {
-        current_turn_team: draftInfo?.draftOrder[0],
-      });
-      const updatedDraftInfo = await getDraftSettings(String(leagueId));
-      setDraftInfo(updatedDraftInfo);
-      initializedRef.current = true; // mark that initialization has run
-    };
+    if (!leagueId) return;
 
-    // Run initialization only if we haven't already, we have a draft order,
-    // and no players have been drafted.
-    if (
-      !initializedRef.current &&
-      draftedPlayers.length === 0 &&
-      draftInfo &&
-      draftInfo?.draftOrder?.length > 0
-    ) {
-      initializeDraftTurn();
-    }
-  }, [leagueId, draftedPlayers.length, draftInfo, draftInfo?.draftOrder]);
-
-  // Use polling on loadDraftData.
-  useEffect(() => {
-    if (draftOver) return; // Skip polling if draft is over.
-
-    const interval = setInterval(() => {
-      // Call your API or polling function only when draftOver is false
-      loadDraftData();
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, [draftOver, leagueId, loadDraftData]);
+    loadDraftData();
+  }, [leagueId, loadDraftData]);
 
   // Auto-draft countdown effect: Only runs in advanced mode.
   useEffect(() => {
@@ -239,43 +210,50 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     ? currentTeamFantasy.TeamName
     : draftInfo?.current_turn_team;
 
-  // Updated nextTurn function with debug logs to verify order and turn change.
-  const nextTurn = useCallback(
-    async (currentTeam: string) => {
-      if (!draftInfo) return;
-      const totalTeams = draftInfo.draftOrder.length;
-      // overallPickNumber is 1-indexed (first pick = 1)
-      const overallPickNumber = draftedPlayers.length + 1;
-      const computedRound =
-        Math.floor((overallPickNumber - 1) / totalTeams) + 1;
-      const isEvenRound = computedRound % 2 === 0;
+  // nextTurn uses the database to compute the next turn, round, and overall pick.
+  const nextTurn = useCallback(async () => {
+    if (!draftInfo) return;
 
-      // Determine the snake order for this round.
-      const order = isEvenRound
-        ? [...draftInfo.draftOrder].reverse()
-        : draftInfo.draftOrder;
-      const currentIndex = order.findIndex((teamId) => teamId === currentTeam);
+    const totalTeams = draftInfo.draftOrder.length;
 
-      let nextTeam: string;
-      if (currentIndex === -1 || currentIndex === order.length - 1) {
-        nextTeam = order[0];
-      } else {
-        nextTeam = order[currentIndex + 1];
-      }
+    // Use overall_pick from the database if it exists; otherwise, default (first pick).
+    const currentOverallPick =
+      typeof draftInfo.overall_pick === "number"
+        ? draftInfo.overall_pick
+        : draftedPlayers.length + 1;
+    const newOverallPick = currentOverallPick + 1;
 
-      console.log("Overall pick number:", overallPickNumber);
-      console.log("Computed round:", computedRound);
-      console.log("Snake order:", order);
-      console.log("Current team:", currentTeam, "Next team:", nextTeam);
+    // Compute the new round based on the new overall pick.
+    // For example, if there are three teams:
+    // picks 1-3: round 1, picks 4-6: round 2, etc.
+    const newRound = Math.floor((newOverallPick - 1) / totalTeams) + 1;
+    const isEvenRound = newRound % 2 === 0;
 
-      await updateDraftSettings(String(leagueId), {
-        current_turn_team: nextTeam,
-      });
-      const updatedDraftInfo = await getDraftSettings(String(leagueId));
-      setDraftInfo(updatedDraftInfo);
-    },
-    [draftInfo, draftedPlayers, leagueId]
-  );
+    // Compute the index within the round (0-indexed)
+    const indexInRound = (newOverallPick - 1) % totalTeams;
+
+    // Reverse the order if even round (snake mode) or use the natural order if odd.
+    const order = isEvenRound
+      ? [...draftInfo.draftOrder].reverse()
+      : draftInfo.draftOrder;
+    const nextTeam = order[indexInRound];
+
+    console.log("New Overall Pick:", newOverallPick);
+    console.log("New Round:", newRound);
+    console.log("Index In Round:", indexInRound);
+    console.log("Snake order:", order);
+    console.log("Next team computed:", nextTeam);
+
+    // Update all properties in the database.
+    await updateDraftSettings(String(leagueId), {
+      overall_pick: newOverallPick,
+      current_round: newRound,
+      current_turn_team: nextTeam,
+    });
+
+    const updatedDraftInfo = await getDraftSettings(String(leagueId));
+    setDraftInfo(updatedDraftInfo);
+  }, [draftInfo, draftedPlayers, leagueId]);
 
   const handleDraft = async (player: Player) => {
     if (!draftInfo) {
@@ -325,12 +303,24 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       setPlayers(formattedPlayers);
 
       // Now update turn: update DB and re-fetch using nextTurn.
-      await nextTurn(draftInfo.current_turn_team);
+      await nextTurn();
     } catch (error) {
       console.error("Error drafting player:", error);
       alert("Failed to draft the player. Please try again.");
     }
   };
+
+  // Only render when draftInfo has been loaded.
+  if (!draftInfo) {
+    return (
+      <Container
+        maxWidth="xl"
+        sx={{ backgroundColor: "black", minHeight: "100vh", py: 4 }}
+      >
+        <div>Loading draft settings...</div>
+      </Container>
+    );
+  }
 
   return (
     <Container
@@ -344,109 +334,102 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
         alignItems: "center",
       }}
     >
-      {loading ||
-      !draftInfo ||
-      !draftInfo.draftOrder ||
-      draftedPlayers == null ? (
-        <div>Loading draft data...</div>
-      ) : (
-        <div className="relative flex flex-col items-center p-4 bg-black shadow-xl h-screen">
-          <h1 className="text-3xl font-bold text-[#B8860B] mb-6">
-            Draft Players - 2024
-          </h1>
+      <div className="relative flex flex-col items-center p-4 bg-black shadow-xl h-screen">
+        <h1 className="text-3xl font-bold text-[#B8860B] mb-6">
+          Draft Players - 2024
+        </h1>
 
-          <>
-            <div className="mb-4 text-white">
-              {draftOver ? (
-                <h2 className="text-3xl font-bold">Draft is Over</h2>
-              ) : (
-                <>
-                  <p>
-                    <strong>Current Turn:</strong> {currentTeamName}
-                  </p>
-                  <p>
-                    <strong>{simpleMode ? "Time Limit:" : "Countdown:"}</strong>{" "}
-                    {simpleMode ? "None (Manual Mode)" : `${countdown} seconds`}
-                  </p>
-                  <p>
-                    <strong>Round:</strong> {computedRound}
-                  </p>
-                  <p>
-                    <strong>Overall Pick #:</strong> {overallPickNumber}
-                  </p>
-                </>
-              )}
-            </div>
-            {loading ? (
-              <div className="flex justify-center items-center mt-10">
-                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-gray-300"></div>
-              </div>
+        <>
+          <div className="mb-4 text-white">
+            {draftOver ? (
+              <h2 className="text-3xl font-bold">Draft is Over</h2>
             ) : (
               <>
-                {draftOver ? (
-                  // Draft is over: render only the drafted players table
-                  <DraftedPlayersTable
-                    players={players}
-                    draftInfo={draftInfo}
-                    fantasyPlayers={fantasyPlayers}
-                    draftedPlayers={draftedPlayers}
-                  />
-                ) : (
-                  <>
-                    <div className="w-full flex flex-col lg:flex-row gap-4">
-                      <div className="w-full lg:w-3/5">
-                        <DraftAvailablePlayersTable
-                          players={players}
-                          handleDraft={handleDraft}
-                          draftInfo={draftInfo}
-                          userFantasyPlayerId={userFantasyPlayerId || ""}
-                          countdown={countdown}
-                          fantasyPlayers={fantasyPlayers}
-                          draftedPlayers={draftedPlayers}
-                        />
-                      </div>
-                      <div className="hidden lg:block lg:w-2/5">
-                        <DraftedPlayersTable
-                          players={players}
-                          draftInfo={draftInfo}
-                          fantasyPlayers={fantasyPlayers}
-                          draftedPlayers={draftedPlayers}
-                        />
-                      </div>
+                <p>
+                  <strong>Current Turn:</strong> {currentTeamName}
+                </p>
+                <p>
+                  <strong>{simpleMode ? "Time Limit:" : "Countdown:"}</strong>{" "}
+                  {simpleMode ? "None (Manual Mode)" : `${countdown} seconds`}
+                </p>
+                <p>
+                  <strong>Round:</strong> {computedRound}
+                </p>
+                <p>
+                  <strong>Overall Pick #:</strong> {overallPickNumber}
+                </p>
+              </>
+            )}
+          </div>
+          {loading ? (
+            <div className="flex justify-center items-center mt-10">
+              <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-b-4 border-gray-300"></div>
+            </div>
+          ) : (
+            <>
+              {draftOver ? (
+                // Draft is over: render only the drafted players table
+                <DraftedPlayersTable
+                  players={players}
+                  draftInfo={draftInfo}
+                  fantasyPlayers={fantasyPlayers}
+                  draftedPlayers={draftedPlayers}
+                />
+              ) : (
+                <>
+                  <div className="w-full flex flex-col lg:flex-row gap-4">
+                    <div className="w-full lg:w-3/5">
+                      <DraftAvailablePlayersTable
+                        players={players}
+                        handleDraft={handleDraft}
+                        draftInfo={draftInfo}
+                        userFantasyPlayerId={userFantasyPlayerId || ""}
+                        countdown={countdown}
+                        fantasyPlayers={fantasyPlayers}
+                        draftedPlayers={draftedPlayers}
+                      />
                     </div>
-                    <div className="lg:hidden fixed bottom-4 right-4 z-50">
-                      <Button
-                        variant="contained"
-                        onClick={() => setDraftDrawerOpen(true)}
-                        sx={{
-                          backgroundColor: "#B8860B !important",
-                          color: "#000",
-                          "&:hover": { backgroundColor: "#a07807" },
-                          fontWeight: "bold",
-                          paddingX: 2,
-                          paddingY: 1,
-                        }}
-                      >
-                        Show Drafted Players
-                      </Button>
-                    </div>
-                    <div className={draftDrawerOpen ? "" : "inert-container"}>
-                      <DraftedTableDrawer
-                        open={draftDrawerOpen}
-                        onClose={() => setDraftDrawerOpen(false)}
+                    <div className="hidden lg:block lg:w-2/5">
+                      <DraftedPlayersTable
                         players={players}
                         draftInfo={draftInfo}
                         fantasyPlayers={fantasyPlayers}
                         draftedPlayers={draftedPlayers}
                       />
                     </div>
-                  </>
-                )}
-              </>
-            )}
-          </>
-        </div>
-      )}
+                  </div>
+                  <div className="lg:hidden fixed bottom-4 right-4 z-50">
+                    <Button
+                      variant="contained"
+                      onClick={() => setDraftDrawerOpen(true)}
+                      sx={{
+                        backgroundColor: "#B8860B !important",
+                        color: "#000",
+                        "&:hover": { backgroundColor: "#a07807" },
+                        fontWeight: "bold",
+                        paddingX: 2,
+                        paddingY: 1,
+                      }}
+                    >
+                      Show Drafted Players
+                    </Button>
+                  </div>
+                  <div className={draftDrawerOpen ? "" : "inert-container"}>
+                    <DraftedTableDrawer
+                      open={draftDrawerOpen}
+                      onClose={() => setDraftDrawerOpen(false)}
+                      players={players}
+                      draftInfo={draftInfo}
+                      fantasyPlayers={fantasyPlayers}
+                      draftedPlayers={draftedPlayers}
+                    />
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </>
+      </div>
     </Container>
   );
 };

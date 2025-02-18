@@ -233,6 +233,8 @@ export const updateDraftSettings = async (
     draftOrder?: string[];
     current_turn_team?: string;
     current_team_turn_ends?: string;
+    overall_pick?: number;
+    current_round?: number;
   }
 ): Promise<DraftInfo | null> => {
   try {

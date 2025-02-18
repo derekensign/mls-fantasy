@@ -21,6 +21,8 @@ export interface DraftInfo {
   activeParticipants?: string[];
   numberOfRounds?: number;
   current_team_turn_ends?: string;
+  overall_pick?: number;
+  current_round?: number;
 }
 
 export interface FantasyPlayer {

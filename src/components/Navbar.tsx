@@ -44,9 +44,6 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
         <div className="flex space-x-2 sm:space-x-4">
           {userDetails && (
             <>
-              <Link href="/Players" legacyBehavior>
-                <a className="hover:underline">Players</a>
-              </Link>
               <Link href={leagueLink} legacyBehavior>
                 <a className="hover:underline">League</a>
               </Link>
