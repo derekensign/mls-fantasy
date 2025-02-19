@@ -54,6 +54,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
             borderBottom: 1,
             borderColor: "divider",
             borderRadius: isMobile ? 0 : "inherit",
+            backgroundColor: "#FFFFF0 ",
           }}
         >
           <Typography variant="h6">Drafted Players</Typography>
@@ -61,13 +62,15 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
             <CloseIcon />
           </IconButton>
         </Box>
-        <DraftedPlayersTable
-          players={players}
-          draftInfo={draftInfo}
-          fantasyPlayers={fantasyPlayers}
-          draftedPlayers={draftedPlayers}
-          isMobile={isMobile}
-        />
+        <div className="max-h-full overflow-y-auto">
+          <DraftedPlayersTable
+            players={players}
+            draftInfo={draftInfo}
+            fantasyPlayers={fantasyPlayers}
+            draftedPlayers={draftedPlayers}
+            isMobile={isMobile}
+          />
+        </div>
       </Box>
     </Drawer>
   );

@@ -54,14 +54,16 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
     <div {...{ inert: "true" }}>
       <TableContainer
         component={Paper}
-        className="shadow rounded-lg my-[73px]"
+        className={`shadow ${
+          !isMobile ? "my-[96px] rounded-lg " : "my-0 rounded-none"
+        }`}
         sx={{ overflowX: "auto" }}
       >
         <Table
           className="divide-y divide-[#B8860B]"
           sx={{ tableLayout: "fixed", width: "100%" }}
         >
-          <TableHead className="bg-[#B8860B] opacity-90 ">
+          <TableHead className="bg-[#B8860B] opacity-90 h-[82px] ">
             <TableRow>
               <TableCell>Pick</TableCell>
               {!isMobile && <TableCell>Round</TableCell>}
