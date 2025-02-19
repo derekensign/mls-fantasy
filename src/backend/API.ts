@@ -76,7 +76,7 @@ export const fetchPlayers2025 = async (): Promise<Player[]> => {
     );
     return response.data;
   } catch (error) {
-    console.error("Failed to fetch players 2024:", error);
+    console.error("Failed to fetch players", error);
     return [];
   }
 };

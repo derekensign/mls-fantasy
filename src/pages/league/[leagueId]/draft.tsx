@@ -120,7 +120,6 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       };
 
       // Update draftInfo only if changed.
-      console.log("fixedDraftData", fixedDraftData);
       setDraftInfo(fixedDraftData);
 
       // Fetch and sort drafted players.
