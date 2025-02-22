@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/golden-bota && npm install && npm run build",
+  "buildCommand": "cd apps/golden-bota && npm install && npm run lint && npm run build",
   "outputDirectory": "apps/golden-bota/.next",
   "installCommand": "npm install"
 } 
