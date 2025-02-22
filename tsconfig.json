@@ -18,9 +18,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./apps/golden-bota/src/*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "src/backend/goldenbota2025/fetchPlayers2025.js"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "apps/golden-bota/backend/goldenbota2025/fetchPlayers2025.js"],
   "exclude": ["node_modules"]
 }
