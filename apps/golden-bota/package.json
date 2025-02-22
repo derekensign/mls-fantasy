@@ -1,0 +1,30 @@
+{
+    "name": "golden-bota",
+    "version": "1.0.0",
+    "scripts": {
+      "dev": "next dev",
+      "build": "next build",
+      "start": "next start"
+    },
+    "dependencies": {
+      "next": "14.1.0",
+      "react": "^18",
+      "react-dom": "^18",
+      "@mui/material": "^5.15.11",
+      "@mui/icons-material": "^5.15.11",
+      "@emotion/react": "^11.11.4",
+      "@emotion/styled": "^11.11.0",
+      "axios": "^1.6.7",
+      "react-beautiful-dnd": "^13.1.1",
+      "react-oidc-context": "^3.2.0",
+      "oidc-client-ts": "^3.1.0",
+      "zustand": "^5.0.3",
+     "@mls-fantasy/api": "file:../../packages/api"
+    },
+    "devDependencies": {
+      "tailwindcss": "^3.3.0",
+      "autoprefixer": "^10.0.1",
+      "postcss": "^8"
+    }
+  }
+  

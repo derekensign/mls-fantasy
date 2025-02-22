@@ -35,3 +35,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Next.js build output
+apps/golden-bota/.next
