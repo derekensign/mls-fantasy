@@ -31,18 +31,18 @@ export interface FantasyPlayer {
 }
 
 interface DraftedPlayersTableProps {
-  draftedPlayers: DraftedPlayer[];
   players: Player[];
+  draftInfo: DraftInfo;
   fantasyPlayers: FantasyPlayer[];
-  draftInfo?: DraftInfo;
+  draftedPlayers: DraftedPlayer[];
   isMobile?: boolean;
 }
 
 const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
-  draftedPlayers,
   players,
-  fantasyPlayers,
   draftInfo,
+  fantasyPlayers,
+  draftedPlayers,
   isMobile = false,
 }) => {
   // Determine the total number of teams.
@@ -51,7 +51,7 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
     draftInfo?.draftOrder?.length || fantasyPlayers.length || 1;
 
   return (
-    <div {...{ inert: "true" }}>
+    <div className={isMobile ? "drawer-table" : ""}>
       <TableContainer
         component={Paper}
         className={`shadow ${
@@ -63,7 +63,7 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
           className="divide-y divide-[#B8860B]"
           sx={{ tableLayout: "fixed", width: "100%" }}
         >
-          <TableHead className="bg-[#B8860B] opacity-90 h-[82px] ">
+          <TableHead className="bg-[#B8860B] opacity-90 h-[58px] ">
             <TableRow>
               <TableCell>Pick</TableCell>
               {!isMobile && <TableCell>Round</TableCell>}
