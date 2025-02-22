@@ -20,6 +20,7 @@ export interface Player {
     id: string;
     name: string;
     team: string;
+    goals_2025: number;
 }
 export interface InitializeLeaguePayload {
     league_id: string;
@@ -56,7 +57,7 @@ export interface DraftData {
     numberOfRounds?: number;
     activeParticipants?: string[];
 }
-export declare const fetchGoldenBootTable: () => Promise<GoldenBootTableResponse[]>;
+export declare const fetchGoldenBootTable: (leagueId: string) => Promise<GoldenBootTableResponse[]>;
 export declare const fetchPlayers2025: () => Promise<Player[]>;
 export declare const initializeLeague: (leagueId: string, players: Player[]) => Promise<any>;
 export declare const draftPlayer: (leagueId: string, playerId: string, team: string) => Promise<any>;

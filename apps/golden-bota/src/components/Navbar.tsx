@@ -1,9 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "react-oidc-context";
 import useUserStore from "../stores/useUserStore"; // Import the user store
+import { useRouter } from "next/router";
 
 function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
+  const { leagueId } = router.query;
+
   const handleLogin = () => auth.signinRedirect();
   const handleLogout = () => {
     const clientId = "7b2ljliksvl2pn7gadjrn90e1a"; // Your Cognito App Client ID
@@ -32,25 +37,101 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
       ? `/league/${userDetails.LeagueId}`
       : "/league";
 
+  const toggleMenu = () => {
+    setIsOpen(!isOpen);
+  };
+
   return (
-    <header className="bg-[#B8860B] text-white p-3 sm:p-4 shadow-md">
-      <nav className="container mx-auto flex justify-between items-center px-4">
+    <header className="bg-[#B8860B] text-white p-3 sm:p-4 shadow-md sticky top-0 z-50 w-full">
+      <nav className="container flex justify-between items-center px-4 w-full max-w-7xl mx-auto">
         {/* App Name */}
-        <Link href="/" legacyBehavior>
-          <a className="text-2xl font-bold">Golden Bota Boiz</a>
+
+        {/* Hamburger button */}
+        <button
+          className="md:hidden text-white focus:outline-none mr-4"
+          onClick={toggleMenu}
+        >
+          <svg
+            className="w-6 h-6"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            {isOpen ? (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            ) : (
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M4 6h16M4 12h16M4 18h16"
+              />
+            )}
+          </svg>
+        </button>
+
+        <Link href="/" className="text-white font-bold text-xl">
+          Golden Bota
         </Link>
 
-        {/* Navigation Links */}
-        <div className="flex space-x-2 sm:space-x-4">
+        {/* Desktop menu */}
+        <div className="hidden md:flex space-x-4 ml-auto">
           {userDetails && (
             <>
-              <Link href={leagueLink} legacyBehavior>
-                <a className="hover:underline">League</a>
+              <Link
+                href={leagueLink}
+                className="text-white hover:text-gray-300"
+              >
+                League
               </Link>
-              <Link href="/MyTeam" legacyBehavior>
-                <a className="hover:underline">My Team</a>
+              <Link href="/MyTeam" className="text-white hover:text-gray-300">
+                My Team
+              </Link>
+              <Link
+                href={`/league/${userDetails.LeagueId}/table`}
+                className="text-white hover:text-gray-300"
+              >
+                Table
               </Link>
             </>
+          )}
+        </div>
+
+        {/* Mobile menu */}
+        <div
+          className={`${
+            isOpen ? "block" : "hidden"
+          } md:hidden fixed left-0 w-full top-16 bg-gray-800 min-h-fit max-h-[1/4] z-40`}
+        >
+          {userDetails && (
+            <div className="flex flex-col space-y-4 p-4 w-full">
+              <Link
+                href={leagueLink}
+                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                onClick={() => setIsOpen(false)}
+              >
+                League
+              </Link>
+              <Link
+                href="/MyTeam"
+                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                onClick={() => setIsOpen(false)}
+              >
+                My Team
+              </Link>
+              <Link
+                href={`/league/${userDetails.LeagueId}/table`}
+                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                onClick={() => setIsOpen(false)}
+              >
+                Table
+              </Link>
+            </div>
           )}
         </div>
 
@@ -59,7 +140,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
           {auth.isAuthenticated ? (
             <>
               <div className="flex items-center space-x-2 sm:space-x-4">
-                <span className="font-semibold text-sm sm:text-base">
+                <span className="font-semibold text-sm sm:hidden lg:block">
                   Hi, {userDetails?.FantasyPlayerName.split(" ")[0] || "User"}!
                 </span>
                 <button

@@ -13,27 +13,29 @@ import {
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { fetchGoldenBootTable } from "@mls-fantasy/api";
-import {
-  Team,
-  Player,
-  GoldenBootTableResponse,
-} from "../types/goldenBootTypes";
+import { Player, GoldenBootTableResponse } from "@mls-fantasy/api";
 import Image from "next/image";
+import { useRouter } from "next/router";
 
-function Row({ row }: { row: Team }) {
+interface TeamWithRank extends GoldenBootTableResponse {
+  rank: number;
+}
+
+function Row({ row }: { row: TeamWithRank }) {
   const [open, setOpen] = useState(false);
   const { rank, TeamName, FantasyPlayerName, TotalGoals, Players } = row;
+
   return (
     <>
       <TableRow
         onClick={() => setOpen(!open)}
         className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70"
       >
-        <TableCell>{rank}</TableCell>
-        <TableCell>{FantasyPlayerName}</TableCell>
-        <TableCell>{TeamName}</TableCell>
-        <TableCell>{TotalGoals}</TableCell>
-        <TableCell className="hidden sm:table-cell">
+        <TableCell className="w-16 !px-2">{rank}</TableCell>
+        <TableCell className="!px-2 sm:px-4">{FantasyPlayerName}</TableCell>
+        <TableCell className="!px-2 sm:px-4">{TeamName}</TableCell>
+        <TableCell className="w-20 !px-2">{TotalGoals}</TableCell>
+        <TableCell className="hidden !pl-0 sm:table-cell w-10">
           <IconButton
             aria-label="expand row"
             size="small"
@@ -58,12 +60,12 @@ function Row({ row }: { row: Team }) {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {Players.map((player: Player) => (
-                    <TableRow key={player.playerId}>
+                  {Players.map((player) => (
+                    <TableRow key={player.id}>
                       <TableCell component="th" scope="row">
-                        {player.PlayerName}
+                        {player.name}
                       </TableCell>
-                      <TableCell>{player.Goals}</TableCell>
+                      <TableCell>{player.goals_2025}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -77,34 +79,20 @@ function Row({ row }: { row: Team }) {
 }
 
 function CollapsibleTable() {
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamWithRank[]>([]);
+  const router = useRouter();
+  const { leagueId } = router.query;
 
   useEffect(() => {
     const getTeams = async () => {
-      const teamsData: GoldenBootTableResponse[] = await fetchGoldenBootTable();
+      if (!leagueId) return; // Don't fetch if leagueId isn't available yet
 
-      // Convert fetched response to our Team[] by adding a default rank and mapping Players.
-      const convertedTeams: Team[] = teamsData.map((item) => ({
-        rank: 0, // temporary rank; will be updated below
-        TeamName: item.TeamName,
-        FantasyPlayerName: item.FantasyPlayerName,
-        TotalGoals: item.TotalGoals,
-        Players:
-          item.Players?.map(
-            (p: any): Player => ({
-              playerId: p.playerId,
-              PlayerName: p.PlayerName,
-              Goals: p.Goals,
-            })
-          ) || [],
-      }));
+      const teamsData = await fetchGoldenBootTable(String(leagueId));
 
-      // Sort teams by TotalGoals descending.
-      const sortedTeams = convertedTeams.sort(
-        (a, b) => b.TotalGoals - a.TotalGoals
-      );
+      // Sort teams by TotalGoals descending
+      const sortedTeams = teamsData.sort((a, b) => b.TotalGoals - a.TotalGoals);
 
-      // Assign proper ranking based on sort order.
+      // Assign proper ranking based on sort order
       const rankedTeams = sortedTeams.map((team, index) => ({
         ...team,
         rank: index + 1,
@@ -114,7 +102,7 @@ function CollapsibleTable() {
     };
 
     getTeams();
-  }, []);
+  }, [leagueId]); // Add leagueId to dependency array
 
   return (
     <div className="flex flex-col items-center p-4 bg-black rounded-lg shadow-xl">
@@ -124,16 +112,16 @@ function CollapsibleTable() {
         width={300}
         height={300}
       />
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto ">
         <TableContainer component={Paper} className="shadow rounded-lg">
           <Table className="min-w-full divide-y divide-[#B8860B]">
             <TableHead className="bg-[#B8860B] opacity-90">
               <TableRow>
-                <TableCell>Ranking</TableCell>
-                <TableCell>Fantasy Player Name</TableCell>
-                <TableCell>Team Name</TableCell>
-                <TableCell>Total Goals</TableCell>
-                <TableCell className="hidden sm:table-cell" />
+                <TableCell className="w-16 !px-2">Rank</TableCell>
+                <TableCell className="!px-2 sm:px-4">Player</TableCell>
+                <TableCell className="!px-2 sm:px-4">Team</TableCell>
+                <TableCell className="w-20 !px-2">Goals</TableCell>
+                <TableCell className="hidden sm:table-cell w-10" />
               </TableRow>
             </TableHead>
             <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">

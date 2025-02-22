@@ -8,9 +8,9 @@ exports.createLeague = createLeague;
 exports.updateTeamProfile = updateTeamProfile;
 const axios_1 = __importDefault(require("axios"));
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
-const fetchGoldenBootTable = async () => {
+const fetchGoldenBootTable = async (leagueId) => {
     try {
-        const response = await axios_1.default.get(`${BASE_URL}/golden-boot-table`);
+        const response = await axios_1.default.get(`${BASE_URL}/golden-boot-table/${leagueId}`);
         return response.data;
     }
     catch (error) {

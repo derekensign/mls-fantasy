@@ -66,7 +66,7 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
       </Button>
       <DragDropContext onDragEnd={handleDragEnd}>
         <Droppable droppableId="draftOrder">
-          {(provided) => (
+          {(provided: any) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {players.map((player, index) => (
                 <Draggable
@@ -74,7 +74,7 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
                   draggableId={player.FantasyPlayerId}
                   index={index}
                 >
-                  {(provided, snapshot) => (
+                  {(provided: any, snapshot: any) => (
                     <Paper
                       ref={provided.innerRef}
                       {...provided.draggableProps}

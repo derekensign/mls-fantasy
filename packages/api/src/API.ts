@@ -28,6 +28,7 @@ export interface Player {
   id: string;
   name: string;
   team: string;
+  goals_2025: number;
   // Add more fields as per your data structure
 }
 
@@ -73,16 +74,26 @@ export interface DraftData {
   activeParticipants?: string[];
 }
 
-export const fetchGoldenBootTable = async (): Promise<
-  GoldenBootTableResponse[]
-> => {
+export const fetchGoldenBootTable = async (
+  leagueId: string
+): Promise<GoldenBootTableResponse[]> => {
+  const url = `${BASE_URL}/golden-boot-table/${leagueId}`;
+  console.log("Attempting to fetch from:", url);
+
   try {
     const response: AxiosResponse<GoldenBootTableResponse[]> = await axios.get(
-      `${BASE_URL}/golden-boot-table`
+      url
     );
     return response.data;
   } catch (error) {
-    console.error("Failed to fetch teams:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("Golden boot table error:", {
+        message: error.message,
+        status: error.response?.status,
+        data: error.response?.data,
+        url: url,
+      });
+    }
     return [];
   }
 };
