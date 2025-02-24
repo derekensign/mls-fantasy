@@ -4,7 +4,7 @@ import {
   Droppable,
   Draggable,
   DropResult,
-} from "react-beautiful-dnd";
+} from "@hello-pangea/dnd";
 import { Paper, Button, Typography } from "@mui/material";
 
 export interface FantasyPlayer {
