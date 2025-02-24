@@ -1,5 +1,3 @@
 {
-  "version": 2,
-  "buildCommand": "cd apps/golden-bota && npm run build",
-  "installCommand": "npm install"
+  "version": 2
 } 
