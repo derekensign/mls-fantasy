@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd apps/golden-bota && npm install && npm run lint && npm run build",
+  "buildCommand": "cd apps/golden-bota && npm install typescript @types/node @types/react @types/react-dom eslint eslint-config-next --save-dev && npm run build",
   "outputDirectory": "apps/golden-bota/.next",
   "installCommand": "npm install"
 } 
