@@ -2,37 +2,36 @@
     "name": "golden-bota",
     "version": "1.0.0",
     "scripts": {
-      "dev": "next dev",
-      "build": "next build",
-      "start": "next start",
-      "lint": "next lint"
+        "dev": "next dev",
+        "build": "next build",
+        "start": "next start",
+        "lint": "next lint"
     },
     "dependencies": {
-      "next": "^14.1.0",
-      "react": "^18",
-      "react-dom": "^18",
-      "@mui/material": "^5.x",
-      "@mui/icons-material": "^5.15.11",
-      "@emotion/react": "^11.11.4",
-      "@emotion/styled": "^11.11.0",
-      "axios": "^1.6.7",
-      "react-beautiful-dnd": "^13.1.1",
-      "react-oidc-context": "^3.2.0",
-      "oidc-client-ts": "^3.1.0",
-      "zustand": "^5.0.3",
-     "@mls-fantasy/api": "file:../../packages/api"
+        "@emotion/react": "^11.11.4",
+        "@emotion/styled": "^11.11.0",
+        "@mls-fantasy/api": "file:../../packages/api",
+        "@mui/icons-material": "^5.15.11",
+        "@mui/material": "^5.x",
+        "axios": "^1.6.7",
+        "next": "^14.1.0",
+        "oidc-client-ts": "^3.1.0",
+        "react": "^18",
+        "react-beautiful-dnd": "^13.1.1",
+        "react-dom": "^18",
+        "react-oidc-context": "^3.2.0",
+        "zustand": "^5.0.3"
     },
     "devDependencies": {
-      "tailwindcss": "^3.3.0",
-      "autoprefixer": "^10.0.1",
-      "postcss": "^8",
-      "eslint": "^8.0.0",
-      "eslint-config-next": "^14.1.0",
-      "typescript": "^5.0.0",
-      "@types/node": "^20.0.0",
-      "@types/react": "^18",
-      "@types/react-dom": "^18",
-      "@types/react-beautiful-dnd": "^13.1.4"
+        "@types/node": "^20.17.19",
+        "@types/react": "^18.3.18",
+        "@types/react-beautiful-dnd": "^13.1.4",
+        "@types/react-dom": "^18.3.5",
+        "autoprefixer": "^10.0.1",
+        "eslint": "^8.57.1",
+        "eslint-config-next": "^14.2.24",
+        "postcss": "^8",
+        "tailwindcss": "^3.3.0",
+        "typescript": "^5.7.3"
     }
-  }
-  
+}
