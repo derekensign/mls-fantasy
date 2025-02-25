@@ -9,7 +9,6 @@ interface Player {
   last_name: string;
   points: number;
   rank: number;
-  // Add other fields as needed
 }
 
 const LadderTable = () => {
@@ -42,47 +41,32 @@ const LadderTable = () => {
   if (error) return <div>Error: {error}</div>;
 
   return (
-    <div
-      style={{ padding: "20px", backgroundColor: "#fff", borderRadius: "8px" }}
-    >
-      <h2 style={{ color: "#00b140" }}>Ladder Table</h2>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr style={{ backgroundColor: "#00b140", color: "#fff" }}>
-            <th style={{ padding: "10px", border: "1px solid #ccc" }}>Rank</th>
-            <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-              Team Name
-            </th>
-            <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-              Player Name
-            </th>
-            <th style={{ padding: "10px", border: "1px solid #ccc" }}>
-              Weekly Points
-            </th>
-          </tr>
-        </thead>
-        <tbody>
-          {ladderData.map((player) => (
-            <tr
-              key={player.id}
-              style={{ backgroundColor: "#f9f9f9", color: "#333" }}
-            >
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {player.rank}
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {player.name}
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {`${player.first_name} ${player.last_name}`.trim() || "N/A"}
-              </td>
-              <td style={{ padding: "10px", border: "1px solid #ccc" }}>
-                {player.points}
-              </td>
+    <div className="p-0 sm:p-5 bg-white sm:rounded-lg">
+      <h2 className="text-green-600 p-2 sm:p-0">Ladder Table</h2>
+      <div className="overflow-x-auto">
+        <table className="min-w-full border-collapse">
+          <thead>
+            <tr className="bg-green-600 text-white">
+              <th className="p-2 border">Rank</th>
+              <th className="p-2 border w-1/3 sm:w-auto">Team Name</th>
+              <th className="p-2 border">Player Name</th>
+              <th className="p-2 border">Weekly Points</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {ladderData.map((player) => (
+              <tr key={player.id} className="bg-gray-100 text-gray-800">
+                <td className="p-2 border">{player.rank}</td>
+                <td className="p-2 border">{player.name}</td>
+                <td className="p-2 border">
+                  {`${player.first_name} ${player.last_name}`.trim() || "N/A"}
+                </td>
+                <td className="p-2 border">{player.points}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 };
