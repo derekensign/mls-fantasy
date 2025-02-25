@@ -1,0 +1,17 @@
+/* styles/globals.css */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+body {
+    font-family: 'Inter', sans-serif;
+  }
+
+html,
+body,
+#__next {
+  min-height: 100%;
+  margin: 0;
+  padding: 0;
+  background-color: black;
+}
