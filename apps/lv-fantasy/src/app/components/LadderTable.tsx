@@ -2,8 +2,18 @@
 
 import React, { useEffect, useState } from "react";
 
+interface Player {
+  id: number;
+  name: string;
+  first_name: string;
+  last_name: string;
+  points: number;
+  rank: number;
+  // Add other fields as needed
+}
+
 const LadderTable = () => {
-  const [ladderData, setLadderData] = useState([]);
+  const [ladderData, setLadderData] = useState<Player[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -15,7 +25,7 @@ const LadderTable = () => {
           throw new Error(`HTTP error! Status: ${response.status}`);
         }
         const data = await response.json();
-        setLadderData(data); // Directly set the data
+        setLadderData(data);
       } catch (error) {
         setError(
           error instanceof Error ? error.message : "An unknown error occurred."
