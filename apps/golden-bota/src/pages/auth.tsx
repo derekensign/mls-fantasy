@@ -12,7 +12,17 @@ export default function Auth() {
     if (!auth.isLoading) {
       if (auth.isAuthenticated) {
         console.log("User is authenticated:", auth.user);
-        router.replace("/");
+
+        // Check if there's a redirect URL in localStorage (set by the app when redirecting to auth)
+        const redirectUrl = localStorage.getItem("returnUrl");
+        if (redirectUrl) {
+          console.log("Redirecting to original URL:", redirectUrl);
+          localStorage.removeItem("returnUrl"); // Clean up
+          router.replace(redirectUrl);
+        } else {
+          // Default redirect to home
+          router.replace("/");
+        }
       } else if (auth.error) {
         console.error("Authentication error:", auth.error);
         router.replace("/");
