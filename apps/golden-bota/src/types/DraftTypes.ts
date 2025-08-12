@@ -4,12 +4,22 @@ export interface Player {
   team: string;
   goals_2024: number;
   draftedBy?: string | null;
+  // Transfer window fields
+  player_dropped?: boolean;
+  drop_date?: string;
+  transfer_window_pickup?: boolean;
+  pickup_date?: string;
 }
 
 export interface DraftedPlayer {
   player_id: string;
   team_drafted_by: string;
   draft_time: string;
+  // Transfer fields
+  dropped?: boolean;
+  drop_date?: string;
+  transfer_window_pickup?: boolean;
+  pickup_date?: string;
 }
 
 export interface DraftInfo {
@@ -23,6 +33,12 @@ export interface DraftInfo {
   current_team_turn_ends?: string;
   overall_pick?: number;
   current_round?: number;
+  // Transfer window fields
+  transfer_window_status?: "inactive" | "active" | "completed";
+  transfer_window_start?: string;
+  transfer_window_end?: string;
+  transfer_current_turn_team?: string;
+  transfer_round?: number;
 }
 
 export interface FantasyPlayer {
@@ -35,5 +51,44 @@ export interface FantasyPlayer {
     Goals: number;
     playerId: number;
     PlayerName: string;
+    // Transfer tracking
+    dropped?: boolean;
+    drop_date?: string;
+    goals_at_drop?: number; // Goals when player was dropped
+    transfer_window_pickup?: boolean;
+    pickup_date?: string;
+    goals_before_pickup?: number; // Goals before being picked up
   }[];
+}
+
+// New transfer-specific interfaces
+export interface TransferAction {
+  fantasy_team_id: string;
+  action_type: "drop" | "pickup";
+  player_id: string;
+  player_name: string;
+  action_date: string;
+  goals_at_action: number;
+  transfer_round?: number;
+}
+
+export interface TransferWindowInfo {
+  status: "inactive" | "active" | "completed";
+  start: string;
+  end: string;
+  currentTurn?: string;
+  round: number;
+  draftOrder: string[];
+  transferActions: TransferAction[];
+  isActive: boolean;
+  timeRemaining?: number;
+  // Track which teams are in pickup mode (have dropped a player and need to pick up)
+  activeTransfers?: {
+    [teamId: string]: {
+      step: "drop" | "pickup";
+      droppedPlayerId?: string;
+      droppedPlayerName?: string;
+      dropTimestamp?: string;
+    };
+  };
 }
