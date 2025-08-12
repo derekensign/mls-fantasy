@@ -110,7 +110,7 @@ async function setupTestLeague() {
       transfer_current_turn_team: "1000", // Start with Derek (Test Team Alpha)
       transfer_round: 1,
       transfer_max_rounds: 2, // Maximum of 2 rounds
-      transfer_snake_order: true, // Enable snake draft order
+      transfer_snake_order: false, // Use regular draft order (not snake)
       transfer_actions: [],
     };
 
@@ -298,9 +298,9 @@ async function setupTestLeague() {
 
     console.log("\n🎯 Transfer System Details:");
     console.log("   • Maximum rounds: 2");
-    console.log("   • Snake draft order: ENABLED");
+    console.log("   • Snake draft order: DISABLED");
     console.log("   • Round 1: Derek → Jorge");
-    console.log("   • Round 2: Jorge → Derek");
+    console.log("   • Round 2: Derek → Jorge (regular order)");
     console.log("   • Auto-polling: Every 5 seconds");
     console.log("   • Total possible transfers: 4 (2 per player)");
   } catch (error) {
