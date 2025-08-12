@@ -121,3 +121,8 @@ export interface UpdateTeamProfileResponse {
  */
 export declare function updateTeamProfile(payload: UpdateTeamProfileRequest): Promise<UpdateTeamProfileResponse>;
 export declare const joinLeague: (leagueId: string, fantasyPlayerId: number) => Promise<any>;
+export declare const getTransferWindowInfo: (leagueId: string) => Promise<any>;
+export declare const pickupPlayer: (leagueId: string, playerId: string, teamId: string) => Promise<any>;
+export declare const dropPlayer: (leagueId: string, playerId: string, teamId: string) => Promise<any>;
+export declare const advanceTransferTurn: (leagueId: string) => Promise<any>;
+export declare const getDraftedPlayersByLeague: (leagueId: string) => Promise<any>;

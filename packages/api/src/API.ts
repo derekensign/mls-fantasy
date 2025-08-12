@@ -424,3 +424,82 @@ export const joinLeague = async (
     throw error;
   }
 };
+
+// Transfer Window Functions
+export const getTransferWindowInfo = async (leagueId: string): Promise<any> => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/league/${leagueId}/transfer-window`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting transfer window info:", error);
+    throw error;
+  }
+};
+
+export const pickupPlayer = async (
+  leagueId: string,
+  playerId: string,
+  teamId: string
+): Promise<any> => {
+  try {
+    const payload = {
+      player_id: playerId,
+      team_id: teamId,
+    };
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/pickup-player`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error picking up player:", error);
+    throw error;
+  }
+};
+
+export const dropPlayer = async (
+  leagueId: string,
+  playerId: string,
+  teamId: string
+): Promise<any> => {
+  try {
+    const payload = {
+      player_id: playerId,
+      team_id: teamId,
+    };
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/drop-player`,
+      payload
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error dropping player:", error);
+    throw error;
+  }
+};
+
+export const advanceTransferTurn = async (leagueId: string): Promise<any> => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/advance-transfer-turn`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error advancing transfer turn:", error);
+    throw error;
+  }
+};
+
+export const getDraftedPlayersByLeague = async (leagueId: string): Promise<any> => {
+  try {
+    const response = await axios.get(
+      `${BASE_URL}/league/${leagueId}/drafted-players`
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Error getting drafted players:", error);
+    throw error;
+  }
+};

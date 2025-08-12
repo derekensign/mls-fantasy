@@ -3,18 +3,28 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.joinLeague = exports.fetchDraftedPlayers = exports.fetchActiveParticipants = exports.joinDraftSession = exports.updateDraftSettings = exports.getLeagueSettings = exports.updateLeagueSettings = exports.fetchFantasyPlayersByLeague = exports.getDraftSettings = exports.fetchUserDetails = exports.fetchLeagueData = exports.draftPlayer = exports.initializeLeague = exports.fetchPlayers2025 = exports.fetchGoldenBootTable = void 0;
+exports.getDraftedPlayersByLeague = exports.advanceTransferTurn = exports.dropPlayer = exports.pickupPlayer = exports.getTransferWindowInfo = exports.joinLeague = exports.fetchDraftedPlayers = exports.fetchActiveParticipants = exports.joinDraftSession = exports.updateDraftSettings = exports.getLeagueSettings = exports.updateLeagueSettings = exports.fetchFantasyPlayersByLeague = exports.getDraftSettings = exports.fetchUserDetails = exports.fetchLeagueData = exports.draftPlayer = exports.initializeLeague = exports.fetchPlayers2025 = exports.fetchGoldenBootTable = void 0;
 exports.createLeague = createLeague;
 exports.updateTeamProfile = updateTeamProfile;
 const axios_1 = __importDefault(require("axios"));
 const BASE_URL = "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod";
 const fetchGoldenBootTable = async (leagueId) => {
+    var _a, _b;
+    const url = `${BASE_URL}/golden-boot-table/${leagueId}`;
+    console.log("Attempting to fetch from:", url);
     try {
-        const response = await axios_1.default.get(`${BASE_URL}/golden-boot-table/${leagueId}`);
+        const response = await axios_1.default.get(url);
         return response.data;
     }
     catch (error) {
-        console.error("Failed to fetch teams:", error);
+        if (axios_1.default.isAxiosError(error)) {
+            console.error("Golden boot table error:", {
+                message: error.message,
+                status: (_a = error.response) === null || _a === void 0 ? void 0 : _a.status,
+                data: (_b = error.response) === null || _b === void 0 ? void 0 : _b.data,
+                url: url,
+            });
+        }
         return [];
     }
 };
@@ -251,3 +261,67 @@ const joinLeague = async (leagueId, fantasyPlayerId) => {
     }
 };
 exports.joinLeague = joinLeague;
+// Transfer Window Functions
+const getTransferWindowInfo = async (leagueId) => {
+    try {
+        const response = await axios_1.default.get(`${BASE_URL}/league/${leagueId}/transfer-window`);
+        return response.data;
+    }
+    catch (error) {
+        console.error("Error getting transfer window info:", error);
+        throw error;
+    }
+};
+exports.getTransferWindowInfo = getTransferWindowInfo;
+const pickupPlayer = async (leagueId, playerId, teamId) => {
+    try {
+        const payload = {
+            player_id: playerId,
+            team_id: teamId,
+        };
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/pickup-player`, payload);
+        return response.data;
+    }
+    catch (error) {
+        console.error("Error picking up player:", error);
+        throw error;
+    }
+};
+exports.pickupPlayer = pickupPlayer;
+const dropPlayer = async (leagueId, playerId, teamId) => {
+    try {
+        const payload = {
+            player_id: playerId,
+            team_id: teamId,
+        };
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/drop-player`, payload);
+        return response.data;
+    }
+    catch (error) {
+        console.error("Error dropping player:", error);
+        throw error;
+    }
+};
+exports.dropPlayer = dropPlayer;
+const advanceTransferTurn = async (leagueId) => {
+    try {
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/advance-transfer-turn`);
+        return response.data;
+    }
+    catch (error) {
+        console.error("Error advancing transfer turn:", error);
+        throw error;
+    }
+};
+exports.advanceTransferTurn = advanceTransferTurn;
+const getDraftedPlayersByLeague = async (leagueId) => {
+    try {
+        const response = await axios_1.default.get(`${BASE_URL}/league/${leagueId}/drafted-players`);
+        return response.data;
+    }
+    catch (error) {
+        console.error("Error getting drafted players:", error);
+        throw error;
+    }
+};
+exports.getDraftedPlayersByLeague = getDraftedPlayersByLeague;
