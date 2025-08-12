@@ -38,3 +38,23 @@ next-env.d.ts
 
 # Next.js build output
 apps/golden-bota/.next
+
+# AWS SAM
+.aws-sam/
+samconfig.toml
+
+# Lambda deployment artifacts
+*.zip
+backend/lambda/*.zip
+
+# AWS deployment files
+template-*.yaml
+deploy-*.sh
+
+# Test files
+test-*.js
+test-*.mjs
+
+# API distribution files
+packages/api/dist/
+packages/api/node_modules/
