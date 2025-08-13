@@ -35,6 +35,7 @@ interface DraftAvailablePlayersTableProps {
   mode?: "draft" | "transfer"; // Add mode prop
   isUserTurn?: boolean; // Add isUserTurn prop
   selectedDropPlayer?: string | null; // Add selectedDropPlayer prop
+  transferStatus?: string; // Add transfer status prop for completion check
   getPlayerOwnership?: (playerId: string) => {
     isOwned: boolean;
     ownerName: string | null;
@@ -53,6 +54,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   mode = "draft", // Default to draft mode
   isUserTurn = false, // Default to false
   selectedDropPlayer = null, // Default to null
+  transferStatus, // Add transfer status prop
   getPlayerOwnership, // Add getPlayerOwnership prop
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -160,6 +162,11 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   };
 
   const isActionButtonDisabled = (player: Player) => {
+    // Always disable if transfer window is completed
+    if (mode === "transfer" && transferStatus === "completed") {
+      return true;
+    }
+
     if (mode === "transfer" && getPlayerOwnership) {
       const ownership = getPlayerOwnership(player.id.toString());
 

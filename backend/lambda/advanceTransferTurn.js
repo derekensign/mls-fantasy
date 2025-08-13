@@ -56,7 +56,7 @@ exports.handler = async (event) => {
     const draftOrder = draftRecord.draftOrder || draftRecord.draft_order || [];
     const currentTurn = draftRecord.transfer_current_turn_team;
     const currentRound = draftRecord.transfer_round || 1;
-    const maxRounds = draftRecord.transfer_max_rounds || 3; // Default to 3 if not set
+    const maxRounds = draftRecord.transfer_max_rounds || 2; // Default to 2 rounds if not set
     const isSnakeOrder = draftRecord.transfer_snake_order || false;
 
     // Check if we've reached the maximum rounds

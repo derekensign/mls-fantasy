@@ -526,7 +526,19 @@ const TransferWindowPage: React.FC = () => {
     if (!transferInfo || !leagueId) return;
 
     try {
-      await API.advanceTransferTurn(String(leagueId));
+      const advanceResult = await API.advanceTransferTurn(String(leagueId));
+      console.log("🎯 Skip turn advance result:", advanceResult);
+
+      // Check if transfer window completed
+      if (advanceResult?.completed) {
+        // Update transfer info to show completed status
+        setTransferInfo((prev) =>
+          prev ? { ...prev, status: "completed" } : null
+        );
+        alert("Transfer window completed! All rounds finished.");
+        return;
+      }
+
       // setSelectedDropPlayer(null); // Removed - now tracked in database
       // setTransferStep("drop"); // This line is removed as transferStep is now derived
       await loadTransferData(); // Refresh data
@@ -550,7 +562,19 @@ const TransferWindowPage: React.FC = () => {
     try {
       // TODO: Add API call to mark user as "done" for this transfer window
       // For now, just skip the current turn
-      await API.advanceTransferTurn(String(leagueId));
+      const advanceResult = await API.advanceTransferTurn(String(leagueId));
+      console.log("🎯 Done transferring advance result:", advanceResult);
+
+      // Check if transfer window completed
+      if (advanceResult?.completed) {
+        // Update transfer info to show completed status
+        setTransferInfo((prev) =>
+          prev ? { ...prev, status: "completed" } : null
+        );
+        alert("Transfer window completed! All rounds finished.");
+        return;
+      }
+
       // setSelectedDropPlayer(null); // Removed - now tracked in database
       // setTransferStep("drop"); // This line is removed as transferStep is now derived
       await loadTransferData();
@@ -1023,6 +1047,7 @@ const TransferWindowPage: React.FC = () => {
               transferInfo.status !== "completed"
             }
             selectedDropPlayer={selectedDropPlayerFromDB}
+            transferStatus={transferInfo.status} // Add transfer status for completion check
             getPlayerOwnership={getPlayerOwnership}
           />
         </div>
