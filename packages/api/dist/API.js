@@ -264,7 +264,7 @@ exports.joinLeague = joinLeague;
 // Transfer Window Functions
 const getTransferWindowInfo = async (leagueId) => {
     try {
-        const response = await axios_1.default.get(`${BASE_URL}/league/${leagueId}/transfer-window`);
+        const response = await axios_1.default.get(`${BASE_URL}/league/${leagueId}/transfer`);
         return response.data;
     }
     catch (error) {
@@ -274,42 +274,83 @@ const getTransferWindowInfo = async (leagueId) => {
 };
 exports.getTransferWindowInfo = getTransferWindowInfo;
 const pickupPlayer = async (leagueId, playerId, teamId) => {
+    var _a, _b, _c, _d;
     try {
         const payload = {
             player_id: playerId,
             team_id: teamId,
         };
-        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/pickup-player`, payload);
+        console.log("🚀 Calling pickupPlayer API:", {
+            url: `${BASE_URL}/league/${leagueId}/transfer/pickup`,
+            payload,
+        });
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/transfer/pickup`, payload);
+        console.log("✅ pickupPlayer response:", response.data);
         return response.data;
     }
     catch (error) {
-        console.error("Error picking up player:", error);
+        console.error("❌ Error picking up player:", error);
+        if (axios_1.default.isAxiosError(error)) {
+            console.error("API Error details:", {
+                status: (_a = error.response) === null || _a === void 0 ? void 0 : _a.status,
+                statusText: (_b = error.response) === null || _b === void 0 ? void 0 : _b.statusText,
+                data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data,
+                headers: (_d = error.response) === null || _d === void 0 ? void 0 : _d.headers,
+            });
+        }
         throw error;
     }
 };
 exports.pickupPlayer = pickupPlayer;
 const dropPlayer = async (leagueId, playerId, teamId) => {
+    var _a, _b, _c, _d;
     try {
         const payload = {
             player_id: playerId,
             team_id: teamId,
         };
-        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/drop-player`, payload);
+        console.log("🚀 Calling dropPlayer API:", {
+            url: `${BASE_URL}/league/${leagueId}/transfer/drop`,
+            payload,
+        });
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/transfer/drop`, payload);
+        console.log("✅ dropPlayer response:", response.data);
         return response.data;
     }
     catch (error) {
-        console.error("Error dropping player:", error);
+        console.error("❌ Error dropping player:", error);
+        if (axios_1.default.isAxiosError(error)) {
+            console.error("API Error details:", {
+                status: (_a = error.response) === null || _a === void 0 ? void 0 : _a.status,
+                statusText: (_b = error.response) === null || _b === void 0 ? void 0 : _b.statusText,
+                data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data,
+                headers: (_d = error.response) === null || _d === void 0 ? void 0 : _d.headers,
+            });
+        }
         throw error;
     }
 };
 exports.dropPlayer = dropPlayer;
 const advanceTransferTurn = async (leagueId) => {
+    var _a, _b, _c, _d;
     try {
-        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/advance-transfer-turn`);
+        console.log("🚀 Calling advanceTransferTurn API:", {
+            url: `${BASE_URL}/league/${leagueId}/transfer/advance`,
+        });
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/transfer/advance`);
+        console.log("✅ advanceTransferTurn response:", response.data);
         return response.data;
     }
     catch (error) {
-        console.error("Error advancing transfer turn:", error);
+        console.error("❌ Error advancing transfer turn:", error);
+        if (axios_1.default.isAxiosError(error)) {
+            console.error("API Error details:", {
+                status: (_a = error.response) === null || _a === void 0 ? void 0 : _a.status,
+                statusText: (_b = error.response) === null || _b === void 0 ? void 0 : _b.statusText,
+                data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data,
+                headers: (_d = error.response) === null || _d === void 0 ? void 0 : _d.headers,
+            });
+        }
         throw error;
     }
 };

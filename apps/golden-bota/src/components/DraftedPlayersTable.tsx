@@ -32,7 +32,7 @@ export interface FantasyPlayer {
 
 interface DraftedPlayersTableProps {
   players: Player[];
-  draftInfo: DraftInfo;
+  draftInfo: DraftInfo | null;
   fantasyPlayers: FantasyPlayer[];
   draftedPlayers: DraftedPlayer[];
   isMobile?: boolean;

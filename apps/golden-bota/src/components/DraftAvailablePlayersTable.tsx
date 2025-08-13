@@ -32,6 +32,14 @@ interface DraftAvailablePlayersTableProps {
   userFantasyPlayerId?: string;
   fantasyPlayers: FantasyPlayer[];
   countdown: number;
+  mode?: "draft" | "transfer"; // Add mode prop
+  isUserTurn?: boolean; // Add isUserTurn prop
+  selectedDropPlayer?: string | null; // Add selectedDropPlayer prop
+  getPlayerOwnership?: (playerId: string) => {
+    isOwned: boolean;
+    ownerName: string | null;
+    isOwnedByUser: boolean;
+  }; // Add getPlayerOwnership prop
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -42,6 +50,10 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   userFantasyPlayerId,
   fantasyPlayers,
   countdown,
+  mode = "draft", // Default to draft mode
+  isUserTurn = false, // Default to false
+  selectedDropPlayer = null, // Default to null
+  getPlayerOwnership, // Add getPlayerOwnership prop
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -100,8 +112,108 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
     setSortConfig({ key, direction });
   };
 
-  const isDraftDisabled = (player: Player) =>
-    draftInfo?.current_turn_team !== userFantasyPlayerId;
+  const isDraftDisabled = (player: Player) => {
+    if (mode === "transfer") {
+      // In transfer mode, disable if it's not the user's turn
+      return !isUserTurn;
+    }
+    // In draft mode, use original logic
+    return draftInfo?.current_turn_team !== userFantasyPlayerId;
+  };
+
+  const getActionButtonText = (player: Player) => {
+    if (mode === "transfer" && getPlayerOwnership) {
+      const ownership = getPlayerOwnership(player.id.toString());
+
+      if (ownership.isOwned) {
+        return ownership.ownerName || "Unknown Team";
+      }
+
+      return "PICK UP";
+    }
+
+    if (mode === "transfer") {
+      // Fallback to old logic if getPlayerOwnership is not available
+      const isPlayerOwned = fantasyPlayers.some(
+        (fp) =>
+          fp.Players &&
+          fp.Players.some(
+            (p: any) => p.id && p.id.toString() === player.id.toString()
+          )
+      );
+
+      if (isPlayerOwned) {
+        const ownerTeam = fantasyPlayers.find(
+          (fp) =>
+            fp.Players &&
+            fp.Players.some(
+              (p: any) => p.id && p.id.toString() === player.id.toString()
+            )
+        );
+        return `Owned by ${ownerTeam?.TeamName || "Unknown"}`;
+      }
+
+      return "PICK UP";
+    }
+    // In draft mode, always show DRAFT
+    return "DRAFT";
+  };
+
+  const isActionButtonDisabled = (player: Player) => {
+    if (mode === "transfer" && getPlayerOwnership) {
+      const ownership = getPlayerOwnership(player.id.toString());
+
+      if (ownership.isOwned) {
+        return true; // Can't pick up owned players - show as text instead
+      }
+
+      // For available players, only enable if:
+      // 1. It's user's turn AND
+      // 2. User has already dropped a player (selectedDropPlayer exists)
+      return !isUserTurn || !selectedDropPlayer;
+    }
+
+    if (mode === "transfer") {
+      // Fallback to old logic if getPlayerOwnership is not available
+      const isPlayerOwned = fantasyPlayers.some(
+        (fp) =>
+          fp.Players &&
+          fp.Players.some(
+            (p: any) => p.id && p.id.toString() === player.id.toString()
+          )
+      );
+
+      if (isPlayerOwned) {
+        return true; // Can't pick up owned players
+      }
+
+      return !isUserTurn; // Can only pick up if it's user's turn
+    }
+    // In draft mode, use original logic
+    return draftInfo?.current_turn_team !== userFantasyPlayerId;
+  };
+
+  const shouldShowButton = (player: Player) => {
+    if (mode === "transfer" && getPlayerOwnership) {
+      const ownership = getPlayerOwnership(player.id.toString());
+      return !ownership.isOwned; // Only show button for unowned players
+    }
+
+    if (mode === "transfer") {
+      // Fallback logic
+      const isPlayerOwned = fantasyPlayers.some(
+        (fp) =>
+          fp.Players &&
+          fp.Players.some(
+            (p: any) => p.id && p.id.toString() === player.id.toString()
+          )
+      );
+      return !isPlayerOwned;
+    }
+
+    // In draft mode, always show button (disabled state handled separately)
+    return true;
+  };
 
   const draftButtonSX = {
     backgroundColor: "black !important",
@@ -110,9 +222,9 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
     fontWeight: "bold",
     "&:hover": { backgroundColor: "#333 !important" },
     "&.Mui-disabled": {
-      backgroundColor: "black",
-      color: "white",
-      opacity: 1,
+      backgroundColor: "#666 !important",
+      color: "#999 !important",
+      opacity: 0.6,
       cursor: "not-allowed",
     },
   };
@@ -122,6 +234,12 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
     padding: "4px 8px",
     fontSize: "0.75rem",
     minWidth: "auto",
+    "&.Mui-disabled": {
+      backgroundColor: "#666 !important",
+      color: "#999 !important",
+      opacity: 0.6,
+      cursor: "not-allowed",
+    },
   };
 
   const estimatedActionsColumnWidth = useMemo(() => {
@@ -212,15 +330,31 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                       draftedRecord.team_drafted_by
                   )?.TeamName || draftedRecord.team_drafted_by}
                 </div>
-              ) : (
+              ) : shouldShowButton(player) ? (
                 <Button
                   variant="contained"
                   onClick={() => handleDraft(player)}
-                  sx={mobileDraftButtonSX}
-                  disabled={isDraftDisabled(player)}
+                  sx={{
+                    ...mobileDraftButtonSX,
+                    ...(isActionButtonDisabled(player) &&
+                      mode === "transfer" && {
+                        backgroundColor: "#666 !important",
+                        color: "#999 !important",
+                        opacity: 0.6,
+                        cursor: "not-allowed",
+                        "&:hover": {
+                          backgroundColor: "#666 !important",
+                        },
+                      }),
+                  }}
+                  disabled={isActionButtonDisabled(player)}
                 >
-                  Draft
+                  {getActionButtonText(player)}
                 </Button>
+              ) : (
+                <div className="text-gray-500 text-center">
+                  {getActionButtonText(player)}
+                </div>
               )}
             </div>
           </div>
@@ -318,33 +452,31 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                             draftedRecord.team_drafted_by
                         )?.TeamName || draftedRecord.team_drafted_by}
                       </span>
-                    ) : (
+                    ) : shouldShowButton(player) ? (
                       <Button
                         variant="contained"
                         onClick={() => handleDraft(player)}
                         sx={{
-                          backgroundColor:
-                            draftInfo?.current_turn_team !== userFantasyPlayerId
-                              ? "#ccc !important"
-                              : "black !important",
-                          color:
-                            draftInfo?.current_turn_team !== userFantasyPlayerId
-                              ? "#666 !important"
-                              : "white !important",
-                          "&:hover": {
-                            backgroundColor:
-                              draftInfo?.current_turn_team !==
-                              userFantasyPlayerId
-                                ? "#ccc !important"
-                                : "#333 !important",
-                          },
+                          ...draftButtonSX,
+                          ...(isActionButtonDisabled(player) &&
+                            mode === "transfer" && {
+                              backgroundColor: "#666 !important",
+                              color: "#999 !important",
+                              opacity: 0.6,
+                              cursor: "not-allowed",
+                              "&:hover": {
+                                backgroundColor: "#666 !important",
+                              },
+                            }),
                         }}
-                        disabled={
-                          draftInfo?.current_turn_team !== userFantasyPlayerId
-                        }
+                        disabled={isActionButtonDisabled(player)}
                       >
-                        Draft
+                        {getActionButtonText(player)}
                       </Button>
+                    ) : (
+                      <span className="text-gray-500">
+                        {getActionButtonText(player)}
+                      </span>
                     )}
                   </TableCell>
                 </TableRow>

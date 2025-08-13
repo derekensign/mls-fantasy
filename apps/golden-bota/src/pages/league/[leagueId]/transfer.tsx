@@ -54,7 +54,7 @@ const TransferWindowPage: React.FC = () => {
 
   // Use local user details instead of store to avoid race conditions
   const userFantasyPlayerId = (
-    localUserDetails?.FantasyPlayerId || localUserDetails?.fantasyPlayerId
+    userDetails?.FantasyPlayerId || localUserDetails?.FantasyPlayerId
   )?.toString();
 
   // Use the database-derived FantasyPlayerId only
@@ -114,25 +114,42 @@ const TransferWindowPage: React.FC = () => {
 
       // Create ownership map from drafted players data
       const playerOwnershipMap = new Map();
+      console.log(
+        "🔍 Processing drafted players data for ownership:",
+        draftedPlayersData.length,
+        "records"
+      );
       draftedPlayersData.forEach((draftedPlayer: any) => {
         const playerId = draftedPlayer.player_id || draftedPlayer.playerId;
         const teamId = draftedPlayer.team_drafted_by;
+        const isDropped = draftedPlayer.dropped;
 
-        // Find team name from fantasy data
-        const owningTeam = fantasyData.find(
-          (fp) => fp.FantasyPlayerId.toString() === teamId
-        );
-        const teamName =
-          owningTeam?.TeamName ||
-          owningTeam?.FantasyPlayerName ||
-          `Team ${teamId}`;
-
-        playerOwnershipMap.set(playerId, {
-          ownerTeamName: teamName,
-          ownerFantasyPlayerId: teamId,
-          ownerFantasyPlayerName: owningTeam?.FantasyPlayerName || teamName,
+        console.log("🔍 Player ownership:", {
+          playerId,
+          teamId,
+          isDropped,
+          droppedAt: draftedPlayer.dropped_at,
         });
+
+        // Only add to ownership map if not dropped
+        if (!isDropped) {
+          // Find team name from fantasy data
+          const owningTeam = fantasyData.find(
+            (fp) => fp.FantasyPlayerId.toString() === teamId
+          );
+          const teamName =
+            owningTeam?.TeamName ||
+            owningTeam?.FantasyPlayerName ||
+            `Team ${teamId}`;
+
+          playerOwnershipMap.set(playerId, {
+            ownerTeamName: teamName,
+            ownerFantasyPlayerId: teamId,
+            ownerFantasyPlayerName: owningTeam?.FantasyPlayerName || teamName,
+          });
+        }
       });
+      console.log("🔍 Final ownership map size:", playerOwnershipMap.size);
 
       // Fetch ALL available players from the general API
       const allPlayersData = await API.fetchPlayers2025();
@@ -156,6 +173,8 @@ const TransferWindowPage: React.FC = () => {
           drop_date: undefined,
           transfer_window_pickup: false,
           pickup_date: undefined,
+          // Add debug info for ownership
+          _debugOwnership: ownershipInfo ? true : false,
         };
       });
 
@@ -396,8 +415,10 @@ const TransferWindowPage: React.FC = () => {
       });
 
       console.log("🎯 Refreshing transfer data after drop...");
+      // Add a small delay to ensure backend DB is updated
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       await loadTransferData(); // Refresh data
-      console.log("🎯 Transfer data refreshed");
+      console.log("🎯 Transfer data refreshed after drop");
     } catch (error: any) {
       console.error("Error dropping player:", error);
       // Check if it's a turn validation error
@@ -484,8 +505,12 @@ const TransferWindowPage: React.FC = () => {
         );
       } else if (error?.response?.status === 409) {
         // Conditional check failed - player not available or race condition
+        console.log("🔄 Race condition detected, forcing data refresh...");
+        // Add a longer delay for race conditions and refresh again
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await loadTransferData();
         alert(
-          "Player is not available for pickup (already owned or race condition). The page has been refreshed to show the current state."
+          "Player pickup failed due to a race condition. The page has been refreshed with the latest data. Please try again."
         );
       } else {
         // Other errors
@@ -610,6 +635,13 @@ const TransferWindowPage: React.FC = () => {
       (dp: any) => (dp.player_id || dp.playerId) === playerId
     );
 
+    console.log("🔍 getPlayerOwnership check for player:", playerId, {
+      found: !!leaguePlayer,
+      dropped: leaguePlayer?.dropped,
+      teamId: leaguePlayer?.team_drafted_by,
+      droppedAt: leaguePlayer?.dropped_at,
+    });
+
     // If player exists in league and is not dropped, they are owned
     if (leaguePlayer && !leaguePlayer.dropped) {
       const teamId = leaguePlayer.team_drafted_by;
@@ -628,16 +660,17 @@ const TransferWindowPage: React.FC = () => {
         ownerName: teamName,
         isOwnedByUser: teamId === actualUserFantasyPlayerId,
       };
+      console.log("🔍 Player is owned:", result);
       return result;
     }
 
     // Player is either not in league or is dropped (available for pickup)
-
     const result = {
       isOwned: false,
       ownerName: null,
       isOwnedByUser: false,
     };
+    console.log("🔍 Player is available:", result);
     return result;
   };
 
@@ -743,6 +776,32 @@ const TransferWindowPage: React.FC = () => {
             }}
           >
             Refresh
+          </Button>
+
+          <Button
+            variant="outlined"
+            size="small"
+            disabled={transferInfo.status === "completed"}
+            onClick={async () => {
+              console.log("🔄 Force refresh from DB triggered");
+              // Add delay to ensure DB consistency
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+              await loadTransferData();
+            }}
+            sx={{
+              color: "#FF6B6B",
+              borderColor: "#FF6B6B",
+              "&:hover": {
+                borderColor: "#ff5252",
+                backgroundColor: "rgba(255, 107, 107, 0.1)",
+              },
+              "&:disabled": {
+                color: "#666",
+                borderColor: "#666",
+              },
+            }}
+          >
+            Force Sync DB
           </Button>
         </Box>
 

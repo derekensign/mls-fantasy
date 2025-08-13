@@ -14,15 +14,18 @@ import {
   DraftInfo,
   FantasyPlayer,
   DraftedPlayer,
+  TransferAction,
 } from "../types/DraftTypes";
 
 interface DraftedTableDrawerProps {
   open: boolean;
   onClose: () => void;
   players: Player[];
-  draftInfo: DraftInfo;
+  draftInfo: DraftInfo | null;
   fantasyPlayers: FantasyPlayer[];
   draftedPlayers: DraftedPlayer[];
+  mode?: string;
+  transferActions?: TransferAction[];
 }
 
 const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
@@ -32,6 +35,8 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
   draftInfo,
   fantasyPlayers,
   draftedPlayers,
+  mode,
+  transferActions,
 }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
