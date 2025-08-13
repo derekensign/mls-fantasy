@@ -56,13 +56,37 @@ exports.handler = async (event) => {
     const draftOrder = draftRecord.draftOrder || draftRecord.draft_order || [];
     const currentTurn = draftRecord.transfer_current_turn_team;
     const currentRound = draftRecord.transfer_round || 1;
-    const maxRounds = draftRecord.transfer_max_rounds || 2; // Default to 2 rounds if not set
+    const maxRounds = draftRecord.transfer_max_rounds || 2; // Default to 2 if not set
     const isSnakeOrder = draftRecord.transfer_snake_order || false;
 
     // Check if we've reached the maximum rounds
     if (currentRound > maxRounds) {
+      console.log(
+        `🏁 Transfer window completed: currentRound ${currentRound} > maxRounds ${maxRounds}`
+      );
+
+      // Update database to mark transfer window as completed
+      const completionParams = {
+        TableName: DRAFT_TABLE,
+        Key: { league_id: league_id },
+        UpdateExpression: `SET 
+          transfer_window_status = :completed_status,
+          transfer_window_end = :end_time`,
+        ExpressionAttributeValues: {
+          ":completed_status": "completed",
+          ":end_time": new Date().toISOString(),
+        },
+      };
+
+      try {
+        await dynamoDb.send(new UpdateCommand(completionParams));
+        console.log("✅ Database updated: transfer window marked as completed");
+      } catch (updateError) {
+        console.error("❌ Error updating completion status:", updateError);
+      }
+
       return {
-        statusCode: 400,
+        statusCode: 200,
         headers: {
           "Content-Type": "application/json",
           "Access-Control-Allow-Origin": "*",
@@ -74,45 +98,184 @@ exports.handler = async (event) => {
       };
     }
 
-    // Calculate next turn with regular order (no snake)
+    // Find the current team's position in the draft order
+    const currentIndex = draftOrder.findIndex((team) => team === currentTurn);
+
+    if (currentIndex === -1) {
+      return {
+        statusCode: 400,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({
+          error: "Current turn team not found in draft order.",
+        }),
+      };
+    }
+
+    // Calculate next turn with snake order support
     let nextIndex;
     let nextRound = currentRound;
 
     // Calculate basic values
     const totalTeams = draftOrder.length;
-    const currentIndex = draftOrder.findIndex((team) => team === currentTurn);
-    const overallPick = (currentRound - 1) * totalTeams + (currentIndex + 1);
 
-    console.log(
-      `📋 Current: ${currentTurn} (Round ${currentRound}, Index ${currentIndex}, Overall pick ${overallPick})`
-    );
+    if (isSnakeOrder) {
+      // Simple snake draft: Round 1 = normal order, Round 2+ = reverse order
 
-    // Regular order: always go forward through the draft order
-    nextIndex = currentIndex + 1;
-    if (nextIndex >= draftOrder.length) {
-      // End of round, start next round from beginning
-      nextIndex = 0;
-      nextRound = currentRound + 1;
+      // Determine the order for the current round
+      let currentRoundOrder;
+      if (currentRound % 2 === 1) {
+        // Odd rounds: normal order
+        currentRoundOrder = [...draftOrder];
+      } else {
+        // Even rounds: reverse order
+        currentRoundOrder = [...draftOrder].reverse();
+      }
+
+      // Find current team's position in this round's order
+      const currentIndexInRound = currentRoundOrder.findIndex(
+        (team) => team === currentTurn
+      );
+
+      // Calculate overall pick number using the correct round position
+      const overallPick =
+        (currentRound - 1) * totalTeams + (currentIndexInRound + 1);
+
+      console.log(
+        `🐍 Current: ${currentTurn} (Round ${currentRound}, Index ${currentIndexInRound}, Overall pick ${overallPick})`
+      );
+
+      console.log(
+        `🐍 Round ${currentRound} order: [${currentRoundOrder.join(", ")}]`
+      );
+
+      // Move to next position in current round
+      let nextIndexInRound = currentIndexInRound + 1;
+
+      // If we've finished this round, move to next round
+      if (nextIndexInRound >= currentRoundOrder.length) {
+        nextRound = currentRound + 1;
+        nextIndexInRound = 0;
+
+        // Determine the order for the next round
+        if (nextRound % 2 === 1) {
+          // Next round is odd: normal order
+          currentRoundOrder = [...draftOrder];
+        } else {
+          // Next round is even: reverse order
+          currentRoundOrder = [...draftOrder].reverse();
+        }
+        console.log(
+          `🐍 Moving to Round ${nextRound} order: [${currentRoundOrder.join(
+            ", "
+          )}]`
+        );
+      }
+
+      // Get the next team from the appropriate round order
+      const nextTeamInRound = currentRoundOrder[nextIndexInRound];
+
+      // Find this team's index in the original draft order for database storage
+      nextIndex = draftOrder.findIndex((team) => team === nextTeamInRound);
+
+      console.log(
+        `🐍 Snake calculation: Round ${nextRound}, Position ${nextIndexInRound} → ${nextTeamInRound} (index ${nextIndex})`
+      );
+
+      // Additional check: For snake draft, validate if we would exceed total allowed picks
+      const maxTotalPicks = maxRounds * totalTeams;
+
+      // Calculate the next overall pick number (after this advance)
+      const nextOverallPick = overallPick + 1;
+
+      console.log(
+        `🔍 Snake draft validation: nextPick ${nextOverallPick}, maxPicks ${maxTotalPicks}`
+      );
+
+      if (nextOverallPick > maxTotalPicks) {
+        console.log(
+          `🏁 Snake draft completed: would exceed maximum picks (${maxTotalPicks})`
+        );
+
+        // Update database to mark transfer window as completed
+        const completionParams = {
+          TableName: DRAFT_TABLE,
+          Key: { league_id: league_id },
+          UpdateExpression: `SET 
+            transfer_window_status = :completed_status,
+            transfer_window_end = :end_time`,
+          ExpressionAttributeValues: {
+            ":completed_status": "completed",
+            ":end_time": new Date().toISOString(),
+          },
+        };
+
+        try {
+          await dynamoDb.send(new UpdateCommand(completionParams));
+          console.log(
+            "✅ Database updated: transfer window marked as completed"
+          );
+        } catch (updateError) {
+          console.error("❌ Error updating completion status:", updateError);
+        }
+
+        return {
+          statusCode: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          body: JSON.stringify({
+            message: "Transfer window completed - maximum transfers reached",
+            completed: true,
+            transferInfo: {
+              currentTurn: currentTurn,
+              round: currentRound,
+              maxRounds: maxRounds,
+              currentPick: overallPick,
+              maxPicks: maxTotalPicks,
+              status: "completed",
+            },
+          }),
+        };
+      }
+    } else {
+      // Regular order: always go forward
+      nextIndex = currentIndex + 1;
+      if (nextIndex >= draftOrder.length) {
+        nextIndex = 0;
+        nextRound = currentRound + 1;
+      }
     }
 
-    const nextTurn = draftOrder[nextIndex];
-    const nextOverallPick = overallPick + 1;
-    const maxTotalPicks = maxRounds * totalTeams;
-
-    console.log(
-      `🔄 Next: ${nextTurn} (Round ${nextRound}, Index ${nextIndex}, Overall pick ${nextOverallPick})`
-    );
-    console.log(
-      `📊 Validation: nextOverallPick(${nextOverallPick}) > maxTotalPicks(${maxTotalPicks})? ${
-        nextOverallPick > maxTotalPicks
-      }`
-    );
-
-    // Check if we've reached the maximum total picks
-    if (nextOverallPick > maxTotalPicks) {
+    // Check if we're trying to start a round beyond the maximum
+    if (nextRound > maxRounds) {
       console.log(
-        `🏁 Transfer window completed: ${nextOverallPick} > ${maxTotalPicks}`
+        `🏁 Transfer window completed: nextRound ${nextRound} > maxRounds ${maxRounds}`
       );
+
+      // Update database to mark transfer window as completed
+      const completionParams = {
+        TableName: DRAFT_TABLE,
+        Key: { league_id: league_id },
+        UpdateExpression: `SET 
+          transfer_window_status = :completed_status,
+          transfer_window_end = :end_time`,
+        ExpressionAttributeValues: {
+          ":completed_status": "completed",
+          ":end_time": new Date().toISOString(),
+        },
+      };
+
+      try {
+        await dynamoDb.send(new UpdateCommand(completionParams));
+        console.log("✅ Database updated: transfer window marked as completed");
+      } catch (updateError) {
+        console.error("❌ Error updating completion status:", updateError);
+      }
+
       return {
         statusCode: 200,
         headers: {
@@ -120,14 +283,19 @@ exports.handler = async (event) => {
           "Access-Control-Allow-Origin": "*",
         },
         body: JSON.stringify({
-          message: "Transfer window completed! All rounds finished.",
+          message: "Transfer window completed",
           completed: true,
-          totalPicks: overallPick,
-          maxPicks: maxTotalPicks,
+          transferInfo: {
+            currentTurn: currentTurn,
+            round: currentRound,
+            maxRounds: maxRounds,
+            status: "completed",
+          },
         }),
       };
     }
 
+    const nextTeam = draftOrder[nextIndex];
     const actionTimestamp = new Date().toISOString();
 
     // Record the transfer action
@@ -147,7 +315,7 @@ exports.handler = async (event) => {
         transfer_round = :next_round,
         transfer_actions = list_append(if_not_exists(transfer_actions, :empty_list), :new_action)`,
       ExpressionAttributeValues: {
-        ":next_team": nextTurn,
+        ":next_team": nextTeam,
         ":next_round": nextRound,
         ":empty_list": [],
         ":new_action": [transferAction],
@@ -158,7 +326,7 @@ exports.handler = async (event) => {
     const result = await dynamoDb.send(new UpdateCommand(updateParams));
 
     console.log(
-      `🔄 Turn advanced: ${currentTurn} → ${nextTurn} (Round ${nextRound})`
+      `🔄 Turn advanced: ${currentTurn} → ${nextTeam} (Round ${nextRound})`
     );
 
     return {
@@ -171,7 +339,7 @@ exports.handler = async (event) => {
         message: "Transfer turn advanced successfully",
         transferInfo: {
           previousTurn: currentTurn,
-          currentTurn: nextTurn,
+          currentTurn: nextTeam,
           round: nextRound,
           draftOrder: draftOrder,
         },

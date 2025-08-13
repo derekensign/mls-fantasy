@@ -63,6 +63,7 @@ exports.handler = async (event) => {
       end: draftRecord.transfer_window_end || null,
       currentTurn: draftRecord.transfer_current_turn_team || null,
       round: draftRecord.transfer_round || 1,
+      maxRounds: draftRecord.transfer_max_rounds || 2,
       draftOrder: draftRecord.draftOrder || draftRecord.draft_order || [],
       transferActions: draftRecord.transfer_actions || [],
       activeTransfers: draftRecord.activeTransfers || {},

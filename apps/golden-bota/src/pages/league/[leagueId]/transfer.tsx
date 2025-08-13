@@ -767,7 +767,7 @@ const TransferWindowPage: React.FC = () => {
   if (
     !transferInfo ||
     transferInfo.status === "inactive" ||
-    transferInfo.isActive === false
+    (transferInfo.isActive === false && transferInfo.status !== "completed")
   ) {
     return (
       <Container
