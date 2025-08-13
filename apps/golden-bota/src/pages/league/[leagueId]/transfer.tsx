@@ -384,9 +384,32 @@ const TransferWindowPage: React.FC = () => {
       console.warn("🚫 Not user's turn - refreshing data first");
       await loadTransferData(); // Refresh to get latest turn info
 
-      // Check again after refresh
-      if (transferInfo.currentTurn !== actualUserFantasyPlayerId) {
-        alert("It's not your turn to make a transfer.");
+      // Get fresh transfer info after the refresh
+      console.log("🔍 Checking turn after refresh...");
+      // Wait a bit for state to update, then check again with a fresh API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      try {
+        const freshTransferData = await API.getTransferWindowInfo(
+          String(leagueId)
+        );
+        console.log(
+          "🔍 Fresh transfer data:",
+          freshTransferData.transferWindow
+        );
+
+        if (
+          freshTransferData.transferWindow?.currentTurn !==
+          actualUserFantasyPlayerId
+        ) {
+          alert(
+            "It's not your turn to make a transfer. Please wait for your turn."
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking fresh turn data:", error);
+        alert("Unable to verify turn status. Please try again.");
         return;
       }
     }
@@ -442,15 +465,47 @@ const TransferWindowPage: React.FC = () => {
     )
       return;
 
-    // Double-check it's still the user's turn
-    if (transferInfo.currentTurn !== actualUserFantasyPlayerId) {
+    // For pickup, be less strict about turn checking since user just successfully dropped
+    // The user should be able to pick up immediately after dropping in the same turn
+    if (
+      transferInfo.currentTurn !== actualUserFantasyPlayerId &&
+      transferStep !== "pickup"
+    ) {
       console.warn("🚫 Not user's turn for pickup - refreshing data first");
       await loadTransferData();
 
-      if (transferInfo.currentTurn !== actualUserFantasyPlayerId) {
-        alert("It's not your turn to make a transfer.");
+      // Get fresh transfer info after the refresh
+      console.log("🔍 Checking turn after refresh for pickup...");
+      // Wait a bit for state to update, then check again with a fresh API call
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      try {
+        const freshTransferData = await API.getTransferWindowInfo(
+          String(leagueId)
+        );
+        console.log(
+          "🔍 Fresh transfer data for pickup:",
+          freshTransferData.transferWindow
+        );
+
+        if (
+          freshTransferData.transferWindow?.currentTurn !==
+          actualUserFantasyPlayerId
+        ) {
+          alert(
+            "It's not your turn to make a transfer. Please wait for your turn."
+          );
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking fresh turn data for pickup:", error);
+        alert("Unable to verify turn status. Please try again.");
         return;
       }
+    } else if (transferStep === "pickup") {
+      console.log(
+        "🔄 User is already in pickup mode, allowing pickup without strict turn check"
+      );
     }
 
     try {
