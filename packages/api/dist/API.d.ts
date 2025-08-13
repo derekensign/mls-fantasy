@@ -126,3 +126,4 @@ export declare const pickupPlayer: (leagueId: string, playerId: string, teamId: 
 export declare const dropPlayer: (leagueId: string, playerId: string, teamId: string) => Promise<any>;
 export declare const advanceTransferTurn: (leagueId: string) => Promise<any>;
 export declare const getDraftedPlayersByLeague: (leagueId: string) => Promise<any>;
+export declare const markUserDoneTransferring: (leagueId: string, teamId: string) => Promise<any>;

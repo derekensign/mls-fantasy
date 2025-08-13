@@ -615,23 +615,14 @@ const TransferWindowPage: React.FC = () => {
     if (!confirmed) return;
 
     try {
-      // TODO: Add API call to mark user as "done" for this transfer window
-      // For now, just skip the current turn
-      const advanceResult = await API.advanceTransferTurn(String(leagueId));
-      console.log("🎯 Done transferring advance result:", advanceResult);
+      // Mark user as done with transfers for this window
+      const result = await API.markUserDoneTransferring(
+        String(leagueId),
+        String(actualUserFantasyPlayerId)
+      );
+      console.log("🎯 Done transferring result:", result);
 
-      // Check if transfer window completed
-      if (advanceResult?.completed) {
-        // Update transfer info to show completed status
-        setTransferInfo((prev) =>
-          prev ? { ...prev, status: "completed" } : null
-        );
-        alert("Transfer window completed! All rounds finished.");
-        return;
-      }
-
-      // setSelectedDropPlayer(null); // Removed - now tracked in database
-      // setTransferStep("drop"); // This line is removed as transferStep is now derived
+      // Reload transfer data to reflect the change
       await loadTransferData();
       alert("You are now done transferring for this window!");
     } catch (error) {
@@ -655,6 +646,13 @@ const TransferWindowPage: React.FC = () => {
 
   // Check if it's user's turn
   const isUserTurn = transferInfo?.currentTurn === actualUserFantasyPlayerId;
+
+  // Check if user has marked themselves as done transferring
+  const isUserDoneTransferring = transferInfo?.finishedTransferringTeams
+    ? Array.from(transferInfo.finishedTransferringTeams).includes(
+        String(actualUserFantasyPlayerId)
+      )
+    : false;
 
   // Handle authentication loading and redirect
   if (auth.isLoading) {
@@ -714,13 +712,6 @@ const TransferWindowPage: React.FC = () => {
       (dp: any) => (dp.player_id || dp.playerId) === playerId
     );
 
-    console.log("🔍 getPlayerOwnership check for player:", playerId, {
-      found: !!leaguePlayer,
-      dropped: leaguePlayer?.dropped,
-      teamId: leaguePlayer?.team_drafted_by,
-      droppedAt: leaguePlayer?.dropped_at,
-    });
-
     // If player exists in league and is not dropped, they are owned
     if (leaguePlayer && !leaguePlayer.dropped) {
       const teamId = leaguePlayer.team_drafted_by;
@@ -739,7 +730,6 @@ const TransferWindowPage: React.FC = () => {
         ownerName: teamName,
         isOwnedByUser: teamId === actualUserFantasyPlayerId,
       };
-      console.log("🔍 Player is owned:", result);
       return result;
     }
 
@@ -749,7 +739,6 @@ const TransferWindowPage: React.FC = () => {
       ownerName: null,
       isOwnedByUser: false,
     };
-    console.log("🔍 Player is available:", result);
     return result;
   };
 
@@ -810,6 +799,27 @@ const TransferWindowPage: React.FC = () => {
           </Alert>
         )}
 
+        {/* User Done Transferring Banner */}
+        {isUserDoneTransferring && transferInfo.status !== "completed" && (
+          <Alert
+            severity="info"
+            sx={{
+              mb: 3,
+              backgroundColor: "#B8860B",
+              color: "black",
+              "& .MuiAlert-icon": { color: "black" },
+            }}
+          >
+            <Typography variant="h6" sx={{ fontWeight: "bold" }}>
+              ✅ You&apos;re Done Transferring!
+            </Typography>
+            <Typography variant="body1">
+              You have opted out of all remaining transfer rounds. You can still
+              view the results as other teams complete their transfers.
+            </Typography>
+          </Alert>
+        )}
+
         <Typography variant="h4" sx={{ color: "#B8860B", mb: 2 }}>
           {transferInfo.status === "completed"
             ? "Transfer Window - Completed"
@@ -832,56 +842,6 @@ const TransferWindowPage: React.FC = () => {
               </span>
             )}
           </Typography>
-
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={transferInfo.status === "completed"}
-            onClick={async () => {
-              console.log("🔄 Manual refresh triggered");
-              await loadTransferData();
-            }}
-            sx={{
-              color: "#B8860B",
-              borderColor: "#B8860B",
-              "&:hover": {
-                borderColor: "#996f00",
-                backgroundColor: "rgba(184, 134, 11, 0.1)",
-              },
-              "&:disabled": {
-                color: "#666",
-                borderColor: "#666",
-              },
-            }}
-          >
-            Refresh
-          </Button>
-
-          <Button
-            variant="outlined"
-            size="small"
-            disabled={transferInfo.status === "completed"}
-            onClick={async () => {
-              console.log("🔄 Force refresh from DB triggered");
-              // Add delay to ensure DB consistency
-              await new Promise((resolve) => setTimeout(resolve, 1000));
-              await loadTransferData();
-            }}
-            sx={{
-              color: "#FF6B6B",
-              borderColor: "#FF6B6B",
-              "&:hover": {
-                borderColor: "#ff5252",
-                backgroundColor: "rgba(255, 107, 107, 0.1)",
-              },
-              "&:disabled": {
-                color: "#666",
-                borderColor: "#666",
-              },
-            }}
-          >
-            Force Sync DB
-          </Button>
         </Box>
 
         {/* Transfer Status */}
@@ -903,8 +863,7 @@ const TransferWindowPage: React.FC = () => {
         {!isUserTurn && transferInfo?.currentTurn && (
           <Alert severity="info" sx={{ mb: 2 }}>
             It&apos;s {getCurrentTurnTeamName()}&apos;s turn to make a transfer.
-            The page will auto-refresh every 3 seconds, or you can click Refresh
-            above.
+            The page will auto-refresh every 3 seconds.
           </Alert>
         )}
 
@@ -1002,26 +961,38 @@ const TransferWindowPage: React.FC = () => {
                   {!player.isDropped ? (
                     <Button
                       variant="contained"
-                      color="warning"
                       onClick={() => handleDropPlayer(player.id.toString())}
                       disabled={
                         !isUserTurn ||
                         transferStep !== "drop" ||
-                        transferInfo.status === "completed"
+                        transferInfo.status === "completed" ||
+                        isUserDoneTransferring
                       }
                       sx={{
                         ml: 2,
+                        backgroundColor: "#B8860B",
+                        color: "black",
+                        "&:hover": {
+                          backgroundColor: "#996f00",
+                        },
+                        "&:disabled": {
+                          backgroundColor: "#666",
+                          color: "#999",
+                        },
                         opacity:
                           !isUserTurn ||
                           transferStep !== "drop" ||
-                          transferInfo.status === "completed"
+                          transferInfo.status === "completed" ||
+                          isUserDoneTransferring
                             ? 0.5
                             : 1,
                       }}
                     >
-                      {isUserTurn &&
-                      transferStep === "drop" &&
-                      transferInfo.status !== "completed"
+                      {isUserDoneTransferring
+                        ? "Done Transferring"
+                        : isUserTurn &&
+                          transferStep === "drop" &&
+                          transferInfo.status !== "completed"
                         ? "DROP PLAYER"
                         : "On Team"}
                     </Button>
@@ -1048,25 +1019,27 @@ const TransferWindowPage: React.FC = () => {
             </Typography>
           )}
 
-          {/* Skip Turn Options - Only show when it's user's turn and window is not completed */}
-          {isUserTurn && transferInfo.status !== "completed" && (
-            <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={handleSkipTurn}
-              >
-                Skip This Turn
-              </Button>
-              <Button
-                variant="outlined"
-                color="error"
-                onClick={handleDoneTransferring}
-              >
-                Done Transferring (Skip All Rounds)
-              </Button>
-            </Box>
-          )}
+          {/* Skip Turn Options - Only show when it's user's turn, window is not completed, and user hasn't marked themselves as done */}
+          {isUserTurn &&
+            transferInfo.status !== "completed" &&
+            !isUserDoneTransferring && (
+              <Box sx={{ display: "flex", gap: 2, justifyContent: "center" }}>
+                <Button
+                  variant="outlined"
+                  onClick={handleDoneTransferring}
+                  sx={{
+                    color: "#B8860B",
+                    borderColor: "#B8860B",
+                    "&:hover": {
+                      borderColor: "#996f00",
+                      backgroundColor: "rgba(184, 134, 11, 0.1)",
+                    },
+                  }}
+                >
+                  Done Transferring (Skip All Rounds)
+                </Button>
+              </Box>
+            )}
         </Paper>
       )}
 

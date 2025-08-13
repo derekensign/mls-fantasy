@@ -67,6 +67,7 @@ exports.handler = async (event) => {
       draftOrder: draftRecord.draftOrder || draftRecord.draft_order || [],
       transferActions: draftRecord.transfer_actions || [],
       activeTransfers: draftRecord.activeTransfers || {},
+      finishedTransferringTeams: draftRecord.finishedTransferringTeams || [],
     };
 
     // Check if transfer window is currently active

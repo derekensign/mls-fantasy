@@ -91,4 +91,6 @@ export interface TransferWindowInfo {
       dropTimestamp?: string;
     };
   };
+  // Track which teams have marked themselves as done transferring
+  finishedTransferringTeams?: Set<string> | string[];
 }

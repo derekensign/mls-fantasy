@@ -539,3 +539,35 @@ export const getDraftedPlayersByLeague = async (leagueId: string): Promise<any> 
     throw error;
   }
 };
+
+export const markUserDoneTransferring = async (
+  leagueId: string,
+  teamId: string
+): Promise<any> => {
+  try {
+    const payload = {
+      team_id: teamId,
+    };
+    console.log("🚀 Calling markUserDoneTransferring API:", {
+      url: `${BASE_URL}/league/${leagueId}/transfer/done`,
+      payload,
+    });
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/transfer/done`,
+      payload
+    );
+    console.log("✅ markUserDoneTransferring response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error marking user done transferring:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("API Error details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+    }
+    throw error;
+  }
+};

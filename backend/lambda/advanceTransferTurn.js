@@ -295,7 +295,166 @@ exports.handler = async (event) => {
       };
     }
 
-    const nextTeam = draftOrder[nextIndex];
+    // Get the list of teams that are done transferring
+    const finishedTransferringTeams =
+      draftRecord.finishedTransferringTeams || [];
+
+    // Convert to Set for easier checking
+    const finishedTeamsSet = new Set(finishedTransferringTeams);
+
+    // Find the next team that hasn't marked themselves as done
+    let nextTeam = draftOrder[nextIndex];
+    let attempts = 0;
+    const maxAttempts = draftOrder.length; // Prevent infinite loops
+
+    while (finishedTeamsSet.has(nextTeam) && attempts < maxAttempts) {
+      console.log(`⏭️ Skipping team ${nextTeam} - they are done transferring`);
+      attempts++;
+
+      if (isSnakeOrder) {
+        // For snake order, we need to recalculate the next position properly
+        // Determine the order for the current round we're checking
+        let currentRoundOrder;
+        if (nextRound % 2 === 1) {
+          // Odd rounds: normal order
+          currentRoundOrder = [...draftOrder];
+        } else {
+          // Even rounds: reverse order
+          currentRoundOrder = [...draftOrder].reverse();
+        }
+
+        // Find current team's position in this round's order
+        const currentIndexInRound = currentRoundOrder.findIndex(
+          (team) => team === nextTeam
+        );
+
+        // Move to next position in current round
+        let nextIndexInRound = currentIndexInRound + 1;
+
+        // If we've finished this round, move to next round
+        if (nextIndexInRound >= currentRoundOrder.length) {
+          nextRound = nextRound + 1;
+          nextIndexInRound = 0;
+
+          // Determine the order for the next round
+          if (nextRound % 2 === 1) {
+            // Next round is odd: normal order
+            currentRoundOrder = [...draftOrder];
+          } else {
+            // Next round is even: reverse order
+            currentRoundOrder = [...draftOrder].reverse();
+          }
+        }
+
+        // Get the next team from the appropriate round order
+        const nextTeamInRound = currentRoundOrder[nextIndexInRound];
+
+        // Find this team's index in the original draft order for consistency
+        nextIndex = draftOrder.findIndex((team) => team === nextTeamInRound);
+        nextTeam = nextTeamInRound;
+
+        console.log(
+          `🐍 Snake skip: Round ${nextRound}, Position ${nextIndexInRound} → ${nextTeam} (index ${nextIndex})`
+        );
+      } else {
+        // Regular order: always go forward
+        nextIndex = nextIndex + 1;
+        if (nextIndex >= draftOrder.length) {
+          nextIndex = 0;
+          nextRound = nextRound + 1;
+        }
+        nextTeam = draftOrder[nextIndex];
+      }
+
+      // Check if we've exceeded max rounds while searching
+      if (nextRound > maxRounds) {
+        console.log(`🏁 All teams finished or max rounds exceeded`);
+
+        // Update database to mark transfer window as completed
+        const completionParams = {
+          TableName: DRAFT_TABLE,
+          Key: { league_id: league_id },
+          UpdateExpression: `SET 
+            transfer_window_status = :completed_status,
+            transfer_window_end = :end_time`,
+          ExpressionAttributeValues: {
+            ":completed_status": "completed",
+            ":end_time": new Date().toISOString(),
+          },
+        };
+
+        try {
+          await dynamoDb.send(new UpdateCommand(completionParams));
+          console.log(
+            "✅ Database updated: transfer window marked as completed"
+          );
+        } catch (updateError) {
+          console.error("❌ Error updating completion status:", updateError);
+        }
+
+        return {
+          statusCode: 200,
+          headers: {
+            "Content-Type": "application/json",
+            "Access-Control-Allow-Origin": "*",
+          },
+          body: JSON.stringify({
+            message: "Transfer window completed",
+            completed: true,
+            transferInfo: {
+              currentTurn: currentTurn,
+              round: currentRound,
+              maxRounds: maxRounds,
+              status: "completed",
+            },
+          }),
+        };
+      }
+    }
+
+    // If all teams are done, complete the transfer window
+    if (attempts >= maxAttempts) {
+      console.log(`🏁 All teams have finished transferring`);
+
+      // Update database to mark transfer window as completed
+      const completionParams = {
+        TableName: DRAFT_TABLE,
+        Key: { league_id: league_id },
+        UpdateExpression: `SET 
+          transfer_window_status = :completed_status,
+          transfer_window_end = :end_time`,
+        ExpressionAttributeValues: {
+          ":completed_status": "completed",
+          ":end_time": new Date().toISOString(),
+        },
+      };
+
+      try {
+        await dynamoDb.send(new UpdateCommand(completionParams));
+        console.log("✅ Database updated: transfer window marked as completed");
+      } catch (updateError) {
+        console.error("❌ Error updating completion status:", updateError);
+      }
+
+      return {
+        statusCode: 200,
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+        body: JSON.stringify({
+          message: "Transfer window completed - all teams finished",
+          completed: true,
+          transferInfo: {
+            currentTurn: currentTurn,
+            round: nextRound,
+            maxRounds: maxRounds,
+            status: "completed",
+          },
+        }),
+      };
+    }
+
     const actionTimestamp = new Date().toISOString();
 
     // Record the transfer action

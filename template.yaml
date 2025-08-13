@@ -16,3 +16,28 @@ Resources:
           Properties:
             Path: /hello
             Method: get
+
+  MarkUserDoneTransferringFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: backend/lambda/markUserDoneTransferring.handler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      CodeUri: .
+      Timeout: 30
+      Environment:
+        Variables:
+          DRAFT_TABLE: Draft
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: Draft
+      Events:
+        MarkDoneTransferring:
+          Type: Api
+          Properties:
+            Path: /league/{league_id}/transfer/done
+            Method: post
+            RequestParameters:
+              - method.request.path.league_id:
+                  Required: true
