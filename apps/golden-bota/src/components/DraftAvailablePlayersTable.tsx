@@ -41,6 +41,7 @@ interface DraftAvailablePlayersTableProps {
     ownerName: string | null;
     isOwnedByUser: boolean;
   }; // Add getPlayerOwnership prop
+  isPickingUp?: boolean; // Add loading state for pickup button
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -56,6 +57,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   selectedDropPlayer = null, // Default to null
   transferStatus, // Add transfer status prop
   getPlayerOwnership, // Add getPlayerOwnership prop
+  isPickingUp = false, // Default to false
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -124,6 +126,10 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   };
 
   const getActionButtonText = (player: Player) => {
+    if (isPickingUp) {
+      return "PICKING UP...";
+    }
+
     if (mode === "transfer" && getPlayerOwnership) {
       const ownership = getPlayerOwnership(player.id.toString());
 
@@ -177,7 +183,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
       // For available players, only enable if:
       // 1. It's user's turn AND
       // 2. User has already dropped a player (selectedDropPlayer exists)
-      return !isUserTurn || !selectedDropPlayer;
+      return !isUserTurn || !selectedDropPlayer || isPickingUp;
     }
 
     if (mode === "transfer") {
@@ -194,7 +200,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
         return true; // Can't pick up owned players
       }
 
-      return !isUserTurn; // Can only pick up if it's user's turn
+      return !isUserTurn || isPickingUp; // Can only pick up if it's user's turn and not currently picking up
     }
     // In draft mode, use original logic
     return draftInfo?.current_turn_team !== userFantasyPlayerId;

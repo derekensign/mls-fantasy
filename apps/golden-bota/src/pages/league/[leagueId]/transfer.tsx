@@ -42,10 +42,16 @@ const TransferWindowPage: React.FC = () => {
     droppedPlayerId?: string;
   }>({ step: "drop" });
 
+  // Loading states for drop and pickup buttons
+  const [isDropping, setIsDropping] = useState<boolean>(false);
+  const [isPickingUp, setIsPickingUp] = useState<boolean>(false);
+
   // Reset local transfer state when league changes or component mounts
   useEffect(() => {
     console.log("🔄 Resetting local transfer state for league:", leagueId);
     setLocalTransferState({ step: "drop" });
+    setIsDropping(false);
+    setIsPickingUp(false);
   }, [leagueId]);
 
   const { userDetails, setUserDetails } = useUserStore();
@@ -59,6 +65,21 @@ const TransferWindowPage: React.FC = () => {
 
   // Use the database-derived FantasyPlayerId only
   const actualUserFantasyPlayerId = userFantasyPlayerId;
+
+  // Reset local transfer state when it's a new user's turn
+  useEffect(() => {
+    if (transferInfo?.currentTurn && actualUserFantasyPlayerId) {
+      const isUserTurn = transferInfo.currentTurn === actualUserFantasyPlayerId;
+      if (isUserTurn) {
+        console.log(
+          "🔄 User's turn detected - resetting transfer state to 'drop'"
+        );
+        setLocalTransferState({ step: "drop" });
+        setIsDropping(false);
+        setIsPickingUp(false);
+      }
+    }
+  }, [transferInfo?.currentTurn, actualUserFantasyPlayerId]);
 
   // Debug user details
   console.log("🔍 Current userDetails from store:", userDetails);
@@ -86,6 +107,28 @@ const TransferWindowPage: React.FC = () => {
         "🔍 Transfer window status:",
         transferData.transferWindow?.status
       );
+      console.log(
+        "🔍 DEBUG: Raw transferActions from API:",
+        transferData.transferWindow?.transferActions
+      );
+      console.log(
+        "🔍 DEBUG: transferActions type:",
+        typeof transferData.transferWindow?.transferActions
+      );
+      console.log(
+        "🔍 DEBUG: transferActions length:",
+        transferData.transferWindow?.transferActions?.length
+      );
+      if (transferData.transferWindow?.transferActions?.length > 0) {
+        console.log(
+          "🔍 DEBUG: First transfer action:",
+          transferData.transferWindow.transferActions[0]
+        );
+        console.log(
+          "🔍 DEBUG: All transfer actions:",
+          JSON.stringify(transferData.transferWindow.transferActions, null, 2)
+        );
+      }
       setTransferInfo(transferData.transferWindow);
 
       // Don't load player data if we don't have user details yet
@@ -114,22 +157,11 @@ const TransferWindowPage: React.FC = () => {
 
       // Create ownership map from drafted players data
       const playerOwnershipMap = new Map();
-      console.log(
-        "🔍 Processing drafted players data for ownership:",
-        draftedPlayersData.length,
-        "records"
-      );
+
       draftedPlayersData.forEach((draftedPlayer: any) => {
         const playerId = draftedPlayer.player_id || draftedPlayer.playerId;
         const teamId = draftedPlayer.team_drafted_by;
         const isDropped = draftedPlayer.dropped;
-
-        console.log("🔍 Player ownership:", {
-          playerId,
-          teamId,
-          isDropped,
-          droppedAt: draftedPlayer.dropped_at,
-        });
 
         // Only add to ownership map if not dropped
         if (!isDropped) {
@@ -149,11 +181,9 @@ const TransferWindowPage: React.FC = () => {
           });
         }
       });
-      console.log("🔍 Final ownership map size:", playerOwnershipMap.size);
 
       // Fetch ALL available players from the general API
       const allPlayersData = await API.fetchPlayers2025();
-      console.log("All players loaded:", allPlayersData.length, "players");
 
       // Create available players list using all players but with ownership info from League table
       const availablePlayers: Player[] = allPlayersData.map((item: any) => {
@@ -179,20 +209,9 @@ const TransferWindowPage: React.FC = () => {
       });
 
       setPlayers(availablePlayers);
-      console.log(
-        "Available players created:",
-        availablePlayers.length,
-        "total with",
-        playerOwnershipMap.size,
-        "owned players"
-      );
 
       // Find user's current players using League table + Players data
       const userFantasyPlayerIdStr = actualUserFantasyPlayerId;
-      console.log(
-        "Looking for user team with FantasyPlayerId:",
-        userFantasyPlayerIdStr
-      );
 
       // Only update user team if we have valid user ID
       if (userFantasyPlayerIdStr) {
@@ -254,23 +273,57 @@ const TransferWindowPage: React.FC = () => {
         );
         console.log("🔍 Found dropped players in database:", droppedPlayers);
 
-        // Only auto-set pickup mode on initial load if user has dropped players AND it's their turn
-        // But don't override user's explicit actions during the same session
+        // Only auto-set pickup mode if user has more drops than pickups (incomplete transfer)
+        // Count actual transfer actions for this user from the transfer history
+        const transferActions = transferInfo?.transferActions || [];
+        const userDrops = transferActions.filter(
+          (action: any) =>
+            action.fantasy_team_id === actualUserFantasyPlayerId &&
+            action.action_type === "drop"
+        ).length;
+
+        const userPickups = transferActions.filter(
+          (action: any) =>
+            action.fantasy_team_id === actualUserFantasyPlayerId &&
+            action.action_type === "pickup"
+        ).length;
+
+        const hasUncompletedDrop = userDrops > userPickups;
+
+        console.log(
+          `🔍 Transfer count check: ${userDrops} drops, ${userPickups} pickups, hasUncompletedDrop: ${hasUncompletedDrop}`
+        );
+
         if (
-          droppedPlayers.length > 0 &&
+          hasUncompletedDrop &&
           transferInfo?.currentTurn === actualUserFantasyPlayerId &&
           localTransferState.step === "drop" &&
           !localTransferState.droppedPlayerId
         ) {
-          const droppedPlayer = droppedPlayers[0];
           console.log(
-            "🔍 Initial load: Found existing dropped player, entering pickup mode:",
-            droppedPlayer
+            `🔍 Initial load: User has incomplete transfer (${userDrops} drops, ${userPickups} pickups), entering pickup mode`
           );
+          // Find the most recent dropped player to set as the selected drop
+          const lastDropAction = transferActions
+            .filter(
+              (action: any) =>
+                action.fantasy_team_id === actualUserFantasyPlayerId &&
+                action.action_type === "drop"
+            )
+            .sort(
+              (a: any, b: any) =>
+                new Date(b.action_date).getTime() -
+                new Date(a.action_date).getTime()
+            )[0];
+
           setLocalTransferState({
             step: "pickup",
-            droppedPlayerId: droppedPlayer.playerId,
+            droppedPlayerId: lastDropAction?.player_id || undefined,
           });
+        } else {
+          console.log(
+            `🔍 No incomplete transfer found (${userDrops} drops, ${userPickups} pickups) - staying in drop mode`
+          );
         }
       } else {
         console.log(
@@ -389,7 +442,9 @@ const TransferWindowPage: React.FC = () => {
 
   // Handle dropping a player
   const handleDropPlayer = async (playerId: string) => {
-    if (!transferInfo || !actualUserFantasyPlayerId) return;
+    if (!transferInfo || !actualUserFantasyPlayerId || isDropping) return;
+
+    setIsDropping(true);
 
     // Double-check it's the user's turn before attempting drop
     if (transferInfo.currentTurn !== actualUserFantasyPlayerId) {
@@ -417,11 +472,13 @@ const TransferWindowPage: React.FC = () => {
           alert(
             "It's not your turn to make a transfer. Please wait for your turn."
           );
+          setIsDropping(false);
           return;
         }
       } catch (error) {
         console.error("Error checking fresh turn data:", error);
         alert("Unable to verify turn status. Please try again.");
+        setIsDropping(false);
         return;
       }
     }
@@ -465,6 +522,8 @@ const TransferWindowPage: React.FC = () => {
       } else {
         alert("Failed to drop player. Please try again.");
       }
+    } finally {
+      setIsDropping(false);
     }
   };
 
@@ -473,9 +532,12 @@ const TransferWindowPage: React.FC = () => {
     if (
       !transferInfo ||
       !actualUserFantasyPlayerId ||
-      !selectedDropPlayerFromDB
+      !selectedDropPlayerFromDB ||
+      isPickingUp
     )
       return;
+
+    setIsPickingUp(true);
 
     // For pickup, be less strict about turn checking since user just successfully dropped
     // The user should be able to pick up immediately after dropping in the same turn
@@ -507,11 +569,13 @@ const TransferWindowPage: React.FC = () => {
           alert(
             "It's not your turn to make a transfer. Please wait for your turn."
           );
+          setIsPickingUp(false);
           return;
         }
       } catch (error) {
         console.error("Error checking fresh turn data for pickup:", error);
         alert("Unable to verify turn status. Please try again.");
+        setIsPickingUp(false);
         return;
       }
     } else if (transferStep === "pickup") {
@@ -585,6 +649,8 @@ const TransferWindowPage: React.FC = () => {
           "Failed to pick up player. Please try again. The page has been refreshed."
         );
       }
+    } finally {
+      setIsPickingUp(false);
     }
   };
 
@@ -978,7 +1044,8 @@ const TransferWindowPage: React.FC = () => {
                         !isUserTurn ||
                         transferStep !== "drop" ||
                         transferInfo.status === "completed" ||
-                        isUserDoneTransferring
+                        isUserDoneTransferring ||
+                        isDropping
                       }
                       sx={{
                         ml: 2,
@@ -995,12 +1062,15 @@ const TransferWindowPage: React.FC = () => {
                           !isUserTurn ||
                           transferStep !== "drop" ||
                           transferInfo.status === "completed" ||
-                          isUserDoneTransferring
+                          isUserDoneTransferring ||
+                          isDropping
                             ? 0.5
                             : 1,
                       }}
                     >
-                      {isUserDoneTransferring
+                      {isDropping
+                        ? "DROPPING..."
+                        : isUserDoneTransferring
                         ? "Done Transferring"
                         : isUserTurn &&
                           transferStep === "drop" &&
@@ -1089,6 +1159,7 @@ const TransferWindowPage: React.FC = () => {
             selectedDropPlayer={selectedDropPlayerFromDB}
             transferStatus={transferInfo.status} // Add transfer status for completion check
             getPlayerOwnership={getPlayerOwnership}
+            isPickingUp={isPickingUp}
           />
         </div>
 
@@ -1101,29 +1172,74 @@ const TransferWindowPage: React.FC = () => {
               Transfer Actions
             </Typography>
             <Box sx={{ maxHeight: "400px", overflow: "auto" }}>
-              {transferInfo.transferActions?.map((action, index) => {
-                const team = fantasyPlayers.find(
-                  (fp) =>
-                    fp.FantasyPlayerId.toString() === action.fantasy_team_id
+              {(() => {
+                console.log(
+                  "🔍 DEBUG: transferInfo.transferActions:",
+                  transferInfo.transferActions
                 );
-                return (
-                  <Box
-                    key={index}
-                    sx={{ mb: 2, p: 1, border: "1px solid #333" }}
-                  >
-                    <Typography variant="body2" sx={{ color: "white" }}>
-                      <strong>{team?.TeamName || "Unknown"}</strong>
-                    </Typography>
-                    <Typography variant="body2" sx={{ color: "#ccc" }}>
-                      {action.action_type === "drop" ? "Dropped" : "Picked up"}:{" "}
-                      {action.player_name}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: "#999" }}>
-                      {new Date(action.action_date).toLocaleString()}
-                    </Typography>
-                  </Box>
+                console.log(
+                  "🔍 DEBUG: transferActions length:",
+                  transferInfo.transferActions?.length
                 );
-              })}
+                console.log("🔍 DEBUG: fantasyPlayers:", fantasyPlayers);
+                return null;
+              })()}
+              {transferInfo.transferActions
+                ?.filter((action) => {
+                  // Filter out "turn_advanced" actions - only show actual player transfers
+                  const isPlayerTransfer =
+                    action.action_type === "drop" ||
+                    action.action_type === "pickup";
+                  console.log(
+                    `🔍 DEBUG: Action ${action.action_type} - isPlayerTransfer: ${isPlayerTransfer}`
+                  );
+                  return isPlayerTransfer;
+                })
+                ?.map((action, index) => {
+                  console.log(`🔍 DEBUG: Processing action ${index}:`, action);
+                  const team = fantasyPlayers.find(
+                    (fp) =>
+                      fp.FantasyPlayerId.toString() === action.fantasy_team_id
+                  );
+                  console.log(
+                    `🔍 DEBUG: Found team for action ${index}:`,
+                    team
+                  );
+                  console.log(`🔍 DEBUG: Action date raw:`, action.action_date);
+                  console.log(
+                    `🔍 DEBUG: Action date parsed:`,
+                    new Date(action.action_date)
+                  );
+                  return (
+                    <Box
+                      key={index}
+                      sx={{ mb: 2, p: 1, border: "1px solid #333" }}
+                    >
+                      <Typography variant="body2" sx={{ color: "white" }}>
+                        <strong>{team?.TeamName || "Unknown"}</strong>
+                      </Typography>
+                      <Typography variant="body2" sx={{ color: "#ccc" }}>
+                        <span
+                          style={{
+                            color:
+                              action.action_type === "drop"
+                                ? "#ff4444"
+                                : "#44ff44",
+                            fontWeight: "bold",
+                          }}
+                        >
+                          {action.action_type === "drop"
+                            ? "Dropped"
+                            : "Picked up"}
+                        </span>
+                        : {action.player_name}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: "#999" }}>
+                        {new Date(action.action_date).toLocaleString()}
+                      </Typography>
+                    </Box>
+                  );
+                })}
             </Box>
           </Paper>
         </div>

@@ -37,6 +37,33 @@ exports.handler = async (event) => {
 
     const dropDate = new Date().toISOString();
 
+    // Get current player info from Players_2025 table before dropping
+    let currentGoals = 0;
+    let playerName = `Player ${player_id}`; // Default fallback name
+    try {
+      const playerInfoParams = {
+        TableName: "Players_2025",
+        Key: { id: player_id }, // Keep as string to match DynamoDB
+      };
+
+      const playerResult = await dynamoDb.send(
+        new GetCommand(playerInfoParams)
+      );
+      if (playerResult.Item) {
+        currentGoals = playerResult.Item.goals_2025 || 0;
+        playerName = playerResult.Item.name || `Player ${player_id}`;
+        console.log(
+          `📊 Player ${playerName} (${player_id}) has ${currentGoals} goals at time of drop`
+        );
+      }
+    } catch (playerError) {
+      console.warn(
+        `⚠️  Could not fetch player info for ${player_id}:`,
+        playerError
+      );
+      // Continue with drop even if we can't get player info
+    }
+
     // Update player in League_{league_id} table to mark as dropped
     console.log(
       `Marking player ${player_id} as dropped in League_${league_id} table...`
@@ -49,7 +76,8 @@ exports.handler = async (event) => {
       UpdateExpression: `SET 
         dropped = :dropped,
         dropped_at = :dropped_at,
-        available_for_pickup = :available`,
+        available_for_pickup = :available,
+        goals_at_drop = :goals_at_drop`,
       ConditionExpression:
         "attribute_exists(player_id) AND team_drafted_by = :team_id AND (attribute_not_exists(dropped) OR dropped = :false)",
       ExpressionAttributeValues: {
@@ -58,6 +86,7 @@ exports.handler = async (event) => {
         ":available": true,
         ":team_id": team_id,
         ":false": false,
+        ":goals_at_drop": currentGoals,
       },
       ReturnValues: "ALL_NEW",
     };
@@ -65,7 +94,7 @@ exports.handler = async (event) => {
     try {
       const result = await dynamoDb.send(new UpdateCommand(updateParams));
       console.log(
-        `✅ Successfully marked player ${player_id} as dropped in League_${league_id}`
+        `✅ Successfully marked player ${player_id} as dropped in League_${league_id} with ${currentGoals} goals recorded`
       );
       console.log("Updated player:", result.Attributes);
     } catch (updateError) {
@@ -86,7 +115,36 @@ exports.handler = async (event) => {
       throw updateError;
     }
 
-    // Update the transfer window state to track that this team is now in "pickup" mode
+    // Record the transfer action in the Draft table
+    console.log(`Recording drop action for player ${player_id}...`);
+    const transferAction = {
+      action_type: "drop",
+      player_id: player_id,
+      player_name: playerName,
+      fantasy_team_id: team_id,
+      action_date: dropDate,
+      round: 1, // We can get this from draft record if needed
+    };
+
+    // First, record the transfer action in the Draft table
+    console.log(`Recording drop action in Draft table...`);
+    try {
+      const recordActionParams = {
+        TableName: DRAFT_TABLE,
+        Key: { league_id: league_id },
+        UpdateExpression: `SET transfer_actions = list_append(if_not_exists(transfer_actions, :emptyList), :newAction)`,
+        ExpressionAttributeValues: {
+          ":emptyList": [],
+          ":newAction": [transferAction],
+        },
+      };
+      await dynamoDb.send(new UpdateCommand(recordActionParams));
+      console.log(`✅ Recorded drop action for team ${team_id}`);
+    } catch (actionError) {
+      console.error("Error recording drop action:", actionError);
+    }
+
+    // Then, update the transfer window state to track that this team is now in "pickup" mode
     console.log(
       `Updating transfer window state for team ${team_id} to pickup mode...`
     );
@@ -108,6 +166,7 @@ exports.handler = async (event) => {
             step: "pickup",
             droppedPlayerId: player_id,
             dropTimestamp: dropDate,
+            goalsAtDrop: currentGoals, // Track goals for transfer calculations
           },
         },
       };
@@ -128,13 +187,13 @@ exports.handler = async (event) => {
         "Access-Control-Allow-Origin": "*",
       },
       body: JSON.stringify({
-        message: `Player ${player_id} dropped successfully`,
+        message: `Player ${player_id} dropped successfully by team ${team_id}`,
         droppedPlayer: {
           player_id: player_id,
           dropped: true,
           dropped_at: dropDate,
-          team_id: team_id,
           available_for_pickup: true,
+          goals_at_drop: currentGoals,
         },
       }),
     };

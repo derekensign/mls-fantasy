@@ -73,11 +73,15 @@ export const handler = async (event) => {
     // Convert Set back to Array for DynamoDB storage
     const finishedTransferringArray = Array.from(finishedTransferringTeams);
 
-    // Update the draft record
+    // Update the draft record and clear active transfer state for this team
     const updateParams = {
       TableName: DRAFT_TABLE,
       Key: { league_id: league_id },
-      UpdateExpression: "SET finishedTransferringTeams = :finishedTeams",
+      UpdateExpression:
+        "SET finishedTransferringTeams = :finishedTeams REMOVE activeTransfers.#teamId",
+      ExpressionAttributeNames: {
+        "#teamId": team_id,
+      },
       ExpressionAttributeValues: {
         ":finishedTeams": finishedTransferringArray,
       },

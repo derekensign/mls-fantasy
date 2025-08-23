@@ -84,11 +84,22 @@ async function setupTestLeague() {
   );
 
   try {
-    // STEP 1: Clear all existing data
-    console.log("\n🧹 STEP 1: Clearing existing data...");
+    // STEP 1: Clear existing data for League 54470 only
+    console.log("\n🧹 STEP 1: Clearing existing data for League 54470...");
     await clearTable("League_54470");
     await clearTable("Fantasy_Players_54470");
-    await clearTable("Draft");
+    // Only clear League 54470's Draft record, not the entire table
+    try {
+      await docClient.send(
+        new DeleteCommand({
+          TableName: "Draft",
+          Key: { league_id: "54470" },
+        })
+      );
+      console.log("   ✅ Cleared Draft record for League 54470");
+    } catch (error) {
+      console.log("   ℹ️  No existing Draft record for League 54470 to clear");
+    }
 
     // STEP 2: Initialize Draft table for league 54470 with ACTIVE transfer window
     console.log(
@@ -112,6 +123,9 @@ async function setupTestLeague() {
       transfer_max_rounds: 2, // Maximum of 2 rounds
       transfer_snake_order: false, // Use regular draft order (not snake)
       transfer_actions: [],
+      // Explicitly clear any active transfer state
+      activeTransfers: {},
+      finishedTransferringTeams: [],
     };
 
     await docClient.send(
