@@ -52,24 +52,146 @@ function Row({ row }: { row: TeamWithRank }) {
         <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
           <Collapse in={open} timeout="auto" unmountOnExit>
             <Box margin={1}>
-              <Table size="small" aria-label="players">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Player Name</TableCell>
-                    <TableCell>Goals</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {Players.map((player) => (
-                    <TableRow key={player.id}>
-                      <TableCell component="th" scope="row">
-                        {player.name}
-                      </TableCell>
-                      <TableCell>{player.goals_2025}</TableCell>
+              {/* Mobile-first responsive table */}
+              <Box sx={{ display: { xs: "block", md: "none" } }}>
+                {/* Mobile Card Layout */}
+                {Players.map((player) => (
+                  <Box
+                    key={player.id}
+                    sx={{
+                      mb: 2,
+                      p: 2,
+                      border: "1px solid #B8860B",
+                      borderRadius: "8px",
+                      backgroundColor: "#F8F6F0", // Warm cream background
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "flex-start",
+                        mb: 1,
+                      }}
+                    >
+                      <Box sx={{ flex: 1 }}>
+                        <Box
+                          sx={{
+                            fontWeight: "bold",
+                            fontSize: "1rem",
+                            color: "#2C1810", // Dark brown for good contrast
+                            mb: 0.5,
+                          }}
+                        >
+                          {player.name}
+                        </Box>
+                        {player.transferStatus &&
+                          player.transferStatus !== "Original" && (
+                            <span
+                              style={{
+                                padding: "2px 6px",
+                                borderRadius: "12px",
+                                fontSize: "0.65rem",
+                                fontWeight: "bold",
+                                color: "white",
+                                backgroundColor:
+                                  player.transferStatus === "Transferred In"
+                                    ? "#4CAF50"
+                                    : player.transferStatus ===
+                                      "Transferred Out"
+                                    ? "#f44336"
+                                    : "#FF9800",
+                              }}
+                            >
+                              {player.transferStatus === "Transferred In"
+                                ? "IN"
+                                : player.transferStatus === "Transferred Out"
+                                ? "OUT"
+                                : "IN/OUT"}
+                            </span>
+                          )}
+                      </Box>
+                      <Box sx={{ textAlign: "right" }}>
+                        <Box
+                          sx={{
+                            fontSize: "1.25rem",
+                            fontWeight: "bold",
+                            color: "#2C1810", // Dark brown for good contrast
+                          }}
+                        >
+                          {player.goals_2025}
+                        </Box>
+                        {player.totalGoalsAllTime !== undefined &&
+                          player.totalGoalsAllTime !== player.goals_2025 && (
+                            <Box sx={{ fontSize: "0.75rem", color: "#666" }}>
+                              (was {player.totalGoalsAllTime})
+                            </Box>
+                          )}
+                      </Box>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+
+              {/* Desktop Table Layout */}
+              <Box sx={{ display: { xs: "none", md: "block" } }}>
+                <Table size="small" aria-label="players">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Player Name</TableCell>
+                      <TableCell>Transfer Status</TableCell>
+                      <TableCell>Goals</TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHead>
+                  <TableBody>
+                    {Players.map((player) => (
+                      <TableRow key={player.id}>
+                        <TableCell component="th" scope="row">
+                          {player.name}
+                        </TableCell>
+                        <TableCell>
+                          {player.transferStatus &&
+                            player.transferStatus !== "Original" && (
+                              <span
+                                style={{
+                                  padding: "2px 8px",
+                                  borderRadius: "4px",
+                                  fontSize: "0.75rem",
+                                  fontWeight: "bold",
+                                  color: "white",
+                                  backgroundColor:
+                                    player.transferStatus === "Transferred In"
+                                      ? "#4CAF50" // Green
+                                      : player.transferStatus ===
+                                        "Transferred Out"
+                                      ? "#f44336" // Red
+                                      : "#FF9800", // Orange for Transferred In/Out
+                                }}
+                              >
+                                {player.transferStatus}
+                              </span>
+                            )}
+                        </TableCell>
+                        <TableCell>
+                          {player.goals_2025}
+                          {player.totalGoalsAllTime !== undefined &&
+                            player.totalGoalsAllTime !== player.goals_2025 && (
+                              <span
+                                style={{
+                                  color: "#666",
+                                  fontSize: "0.8rem",
+                                  marginLeft: "4px",
+                                }}
+                              >
+                                (was {player.totalGoalsAllTime})
+                              </span>
+                            )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Box>
             </Box>
           </Collapse>
         </TableCell>

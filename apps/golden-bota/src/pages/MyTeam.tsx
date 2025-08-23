@@ -15,6 +15,10 @@ import Image from "next/image";
 type Player = {
   PlayerName: string;
   Goals: number;
+  TransferStatus?: "Transferred In" | "Transferred Out" | "Original" | "";
+  JoinedDate?: string;
+  LeftDate?: string;
+  GoalsAfterJoining?: number; // Goals scored only after joining this team
 };
 
 type Team = {
@@ -283,17 +287,60 @@ export default function MyTeam() {
 
       {/* Render team roster */}
       {team && team.players && (
-        <div className="max-w-3xl mx-auto bg-[#B8860B] text-black rounded-lg p-4 mb-4 shadow-md">
+        <div className="max-w-5xl mx-auto bg-[#B8860B] text-black rounded-lg p-4 mb-4 shadow-md">
           <h2 className="text-2xl font-semibold">{team.teamName}</h2>
           <p className="text-lg">Total Goals: {team.totalGoals}</p>
           <h3 className="text-xl mt-4 mb-2">Players</h3>
-          <ul className="list-disc list-inside">
-            {team.players.map((player: Player, idx: number) => (
-              <li key={idx} className="text-lg">
-                {player.PlayerName} - {player.Goals} Goals
-              </li>
-            ))}
-          </ul>
+
+          {/* Enhanced table with transfer status */}
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse border border-gray-400">
+              <thead>
+                <tr className="bg-[#8B7355]">
+                  <th className="border border-gray-400 px-4 py-2 text-left">
+                    Player Name
+                  </th>
+                  <th className="border border-gray-400 px-4 py-2 text-center">
+                    Transfer Status
+                  </th>
+                  <th className="border border-gray-400 px-4 py-2 text-center">
+                    Goals (After Joining)
+                  </th>
+                  <th className="border border-gray-400 px-4 py-2 text-center">
+                    Total Goals (2025)
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {team.players.map((player: Player, idx: number) => (
+                  <tr key={idx} className="hover:bg-[#A0956B]">
+                    <td className="border border-gray-400 px-4 py-2 font-medium">
+                      {player.PlayerName}
+                    </td>
+                    <td className="border border-gray-400 px-4 py-2 text-center">
+                      <span
+                        className={`px-2 py-1 rounded text-sm ${
+                          player.TransferStatus === "Transferred In"
+                            ? "bg-green-200 text-green-800"
+                            : player.TransferStatus === "Transferred Out"
+                            ? "bg-red-200 text-red-800"
+                            : "bg-gray-200 text-gray-600"
+                        }`}
+                      >
+                        {player.TransferStatus || "Original"}
+                      </span>
+                    </td>
+                    <td className="border border-gray-400 px-4 py-2 text-center font-bold">
+                      {player.GoalsAfterJoining ?? player.Goals}
+                    </td>
+                    <td className="border border-gray-400 px-4 py-2 text-center text-gray-600">
+                      {player.Goals}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

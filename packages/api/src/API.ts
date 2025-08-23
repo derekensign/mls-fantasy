@@ -36,6 +36,17 @@ export interface Player {
   name: string;
   team: string;
   goals_2025: number;
+  // Transfer status fields
+  transferStatus?:
+    | "Transferred In"
+    | "Transferred Out"
+    | "Transferred In/Out"
+    | "Original";
+  joinedDate?: string;
+  leftDate?: string;
+  totalGoalsAllTime?: number;
+  goalsAtDrop?: number;
+  goalsBeforePickup?: number;
   // Add more fields as per your data structure
 }
 
