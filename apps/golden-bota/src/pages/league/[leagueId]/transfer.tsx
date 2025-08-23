@@ -225,7 +225,7 @@ const TransferWindowPage: React.FC = () => {
             playerId: dp.player_id || dp.playerId,
             isDropped: dp.dropped || false,
             droppedAt: dp.dropped_at || null,
-            isPickedUp: dp.transfer_pickup || false,
+            isPickedUp: !!dp.picked_up_at, // True if picked_up_at has a value
             pickedUpAt: dp.picked_up_at || null,
           }));
 
@@ -984,28 +984,49 @@ const TransferWindowPage: React.FC = () => {
                   }}
                 >
                   <Box>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        color: player.isDropped ? "#ff9999" : "#fff",
-                        textDecoration: player.isDropped
-                          ? "line-through"
-                          : "none",
-                      }}
-                    >
-                      {player.name}
+                    <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                      <Typography
+                        variant="body1"
+                        sx={{
+                          color: player.isDropped ? "#ff9999" : "#fff",
+                          textDecoration: player.isDropped
+                            ? "line-through"
+                            : "none",
+                        }}
+                      >
+                        {player.name}
+                      </Typography>
+
+                      {/* Transfer Status Badge */}
                       {player.isDropped && (
                         <span
                           style={{
-                            color: "#ff6b6b",
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            fontSize: "0.7rem",
                             fontWeight: "bold",
-                            marginLeft: "8px",
+                            color: "white",
+                            backgroundColor: "#dc2626", // Red
                           }}
                         >
-                          (DROPPED)
+                          DROPPED
                         </span>
                       )}
-                    </Typography>
+                      {!player.isDropped && player.isPickedUp && (
+                        <span
+                          style={{
+                            padding: "2px 8px",
+                            borderRadius: "12px",
+                            fontSize: "0.7rem",
+                            fontWeight: "bold",
+                            color: "white",
+                            backgroundColor: "#16a34a", // Green
+                          }}
+                        >
+                          PICKED UP
+                        </span>
+                      )}
+                    </Box>
                     <Typography variant="body2" sx={{ color: "#ccc" }}>
                       Goals: {player.goals_2024 || 0}
                       {player.isDropped && player.droppedAt && (
@@ -1171,7 +1192,7 @@ const TransferWindowPage: React.FC = () => {
             <Typography variant="h6" sx={{ color: "#B8860B", mb: 2 }}>
               Transfer Actions
             </Typography>
-            <Box sx={{ maxHeight: "400px", overflow: "auto" }}>
+            <Box>
               {(() => {
                 console.log(
                   "🔍 DEBUG: transferInfo.transferActions:",

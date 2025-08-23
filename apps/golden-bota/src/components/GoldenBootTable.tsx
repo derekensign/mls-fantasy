@@ -87,28 +87,37 @@ function Row({ row }: { row: TeamWithRank }) {
                         </Box>
                         {player.transferStatus &&
                           player.transferStatus !== "Original" && (
-                            <span
-                              style={{
+                            <Box
+                              sx={{
+                                mt: 0.5,
+                                display: "inline-block",
                                 padding: "2px 6px",
                                 borderRadius: "12px",
-                                fontSize: "0.65rem",
+                                fontSize: "0.6rem",
                                 fontWeight: "bold",
                                 color: "white",
                                 backgroundColor:
-                                  player.transferStatus === "Transferred In"
-                                    ? "#4CAF50"
-                                    : player.transferStatus ===
-                                      "Transferred Out"
-                                    ? "#f44336"
-                                    : "#FF9800",
+                                  player.transferStatus.startsWith(
+                                    "Transferred In"
+                                  )
+                                    ? "#4CAF50" // Green
+                                    : player.transferStatus.startsWith(
+                                        "Transferred Out"
+                                      )
+                                    ? "#f44336" // Red
+                                    : "#FF9800", // Orange for In/Out
                               }}
                             >
-                              {player.transferStatus === "Transferred In"
+                              {player.transferStatus.startsWith(
+                                "Transferred In"
+                              )
                                 ? "IN"
-                                : player.transferStatus === "Transferred Out"
+                                : player.transferStatus.startsWith(
+                                    "Transferred Out"
+                                  )
                                 ? "OUT"
                                 : "IN/OUT"}
-                            </span>
+                            </Box>
                           )}
                       </Box>
                       <Box sx={{ textAlign: "right" }}>
@@ -154,21 +163,32 @@ function Row({ row }: { row: TeamWithRank }) {
                             player.transferStatus !== "Original" && (
                               <span
                                 style={{
-                                  padding: "2px 8px",
-                                  borderRadius: "4px",
-                                  fontSize: "0.75rem",
+                                  padding: "4px 8px",
+                                  borderRadius: "12px",
+                                  fontSize: "0.7rem",
                                   fontWeight: "bold",
                                   color: "white",
                                   backgroundColor:
-                                    player.transferStatus === "Transferred In"
+                                    player.transferStatus.startsWith(
+                                      "Transferred In"
+                                    )
                                       ? "#4CAF50" // Green
-                                      : player.transferStatus ===
-                                        "Transferred Out"
+                                      : player.transferStatus.startsWith(
+                                          "Transferred Out"
+                                        )
                                       ? "#f44336" // Red
-                                      : "#FF9800", // Orange for Transferred In/Out
+                                      : "#FF9800", // Orange for In/Out
                                 }}
                               >
-                                {player.transferStatus}
+                                {player.transferStatus.startsWith(
+                                  "Transferred In"
+                                )
+                                  ? "TRANSFERRED IN"
+                                  : player.transferStatus.startsWith(
+                                      "Transferred Out"
+                                    )
+                                  ? "TRANSFERRED OUT"
+                                  : "IN/OUT"}
                               </span>
                             )}
                         </TableCell>

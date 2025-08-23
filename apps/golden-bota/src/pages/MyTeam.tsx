@@ -58,7 +58,8 @@ export default function MyTeam() {
       const fetchTeamData = async () => {
         setLoading(true);
         try {
-          const response = await fetch(
+          // First get user info to find their league and team
+          const userResponse = await fetch(
             "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod/get-my-team",
             {
               method: "POST",
@@ -69,21 +70,65 @@ export default function MyTeam() {
             }
           );
 
+          if (!userResponse.ok) {
+            throw new Error("Failed to fetch user data");
+          }
+
+          const userData = await userResponse.json();
+          if (!userData.teams || userData.teams.length === 0) {
+            setTeam(defaultTeam);
+            setPlayerName("");
+            return;
+          }
+
+          const userTeam = userData.teams[0];
+          const leagueId = userTeam.leagueId;
+
+          // Now get the Golden Boot data which has transfer status
+          const response = await fetch(
+            `https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod/golden-boot-table/${leagueId}`
+          );
+
           if (response.ok) {
-            const data = await response.json();
-            if (data.teams && data.teams.length > 0) {
-              const fetchedTeam = data.teams[0];
-              setTeam(fetchedTeam);
-              // Populate playerName if available; otherwise, leave blank.
-              if (fetchedTeam.fantasyPlayerName) {
-                setPlayerName(fetchedTeam.fantasyPlayerName);
-              } else {
-                setPlayerName("");
-              }
+            const goldenBootData = await response.json();
+
+            // Find the current user's team in the Golden Boot data
+            const currentUserTeam = goldenBootData.find(
+              (team: any) =>
+                team.FantasyPlayerName === userTeam.fantasyPlayerName
+            );
+
+            if (currentUserTeam) {
+              // Convert Golden Boot format to MyTeam format
+              const convertedTeam = {
+                teamName: currentUserTeam.TeamName,
+                leagueId: leagueId,
+                totalGoals: currentUserTeam.TotalGoals,
+                fantasyPlayerName: currentUserTeam.FantasyPlayerName,
+                players: currentUserTeam.Players.map((player: any) => ({
+                  PlayerName: player.name,
+                  Goals: player.goals_2025,
+                  TransferStatus:
+                    player.transferStatus === "Original"
+                      ? ""
+                      : player.transferStatus,
+                  JoinedDate: player.joinedDate,
+                  LeftDate: player.leftDate,
+                  GoalsAfterJoining: player.goals_2025, // This will be the adjusted goals from the Lambda
+                })),
+              };
+
+              setTeam(convertedTeam);
+              setPlayerName(currentUserTeam.FantasyPlayerName || "");
             } else {
-              // No team exists — initialize with defaultTeam.
-              setTeam(defaultTeam);
-              setPlayerName("");
+              // Fallback to user data if not found in Golden Boot
+              setTeam({
+                teamName: userTeam.teamName,
+                leagueId: userTeam.leagueId,
+                totalGoals: userTeam.totalGoals || 0,
+                players: userTeam.players || [],
+              });
+              setPlayerName(userTeam.fantasyPlayerName || "");
             }
           } else {
             const errText = await response.text();

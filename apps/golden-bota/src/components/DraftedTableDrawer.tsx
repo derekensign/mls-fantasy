@@ -41,6 +41,9 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
+  // Determine if we're in transfer mode based on transfer actions
+  const isTransferMode = transferActions && transferActions.length > 0;
+
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
       <Box
@@ -62,18 +65,21 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
             backgroundColor: "#FFFFF0 ",
           }}
         >
-          <Typography variant="h6">Drafted Players</Typography>
+          <Typography variant="h6">
+            {isTransferMode ? "Transferred Players" : "Drafted Players"}
+          </Typography>
           <IconButton onClick={onClose} aria-label="Close">
             <CloseIcon />
           </IconButton>
         </Box>
-        <div className="max-h-full overflow-y-auto">
+        <div className="flex-1">
           <DraftedPlayersTable
             players={players}
             draftInfo={draftInfo}
             fantasyPlayers={fantasyPlayers}
             draftedPlayers={draftedPlayers}
             isMobile={isMobile}
+            transferActions={transferActions}
           />
         </div>
       </Box>

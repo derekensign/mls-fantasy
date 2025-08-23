@@ -112,19 +112,19 @@ export const handler = async (event) => {
 
       if (wasPickedUp && !wasDropped) {
         // Player was transferred IN to this team
-        transferStatus = "Transferred In";
+        transferStatus = `Transferred In: ${playerName}`;
         joinedDate = draftedPlayer.picked_up_at;
         // Only count goals scored AFTER joining this team
         calculatedGoals = Math.max(0, totalGoals - goalsBeforePickup);
       } else if (wasDropped && !wasPickedUp) {
         // Player was transferred OUT from this team
-        transferStatus = "Transferred Out";
+        transferStatus = `Transferred Out: ${playerName}`;
         leftDate = draftedPlayer.dropped_at;
         // Only count goals scored BEFORE leaving this team
         calculatedGoals = goalsAtDrop;
       } else if (wasPickedUp && wasDropped) {
         // Player was both picked up and dropped (transferred in then out)
-        transferStatus = "Transferred In/Out";
+        transferStatus = `Transferred In/Out: ${playerName}`;
         joinedDate = draftedPlayer.picked_up_at;
         leftDate = draftedPlayer.dropped_at;
         // Count goals between pickup and drop
