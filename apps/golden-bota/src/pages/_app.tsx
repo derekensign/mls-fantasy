@@ -14,6 +14,20 @@ const cognitoAuthConfig = {
   redirect_uri: COGNITO_CONFIG.redirectUri,
   response_type: "code",
   scope: "phone openid email",
+  // Use localStorage instead of sessionStorage for persistence across tabs
+  userStore:
+    typeof window !== "undefined"
+      ? {
+          get: (key: string) => window.localStorage.getItem(key),
+          set: (key: string, value: string) =>
+            window.localStorage.setItem(key, value),
+          remove: (key: string) => window.localStorage.removeItem(key),
+        }
+      : undefined,
+  // Enable automatic silent renew of tokens
+  automaticSilentRenew: true,
+  // Try to renew the token 60 seconds before it expires
+  accessTokenExpiringNotificationTimeInSeconds: 60,
   metadata: {
     // Override to use your Hosted UI endpoints:
     authorization_endpoint:

@@ -15,6 +15,13 @@ export interface DraftInfo {
   current_team_turn_ends?: string;
   overall_pick?: number;
   current_round?: number;
+  // Transfer window fields
+  transfer_window_start?: string;
+  transfer_window_end?: string;
+  transfer_max_rounds?: number;
+  transfer_snake_order?: boolean;
+  transferOrder?: string[];
+  transfer_window_status?: string;
 }
 
 export interface GoldenBootTableResponse {
@@ -202,6 +209,15 @@ export const getDraftSettings = async (
     numberOfRounds: data.numberOfRounds || 5,
     activeParticipants: data.activeParticipants || [],
     current_team_turn_ends: data.current_team_turn_ends || "",
+    // Transfer window fields
+    transfer_window_start: data.transfer_window_start || "",
+    transfer_window_end: data.transfer_window_end || "",
+    transfer_max_rounds: data.transfer_max_rounds || 2,
+    transfer_snake_order: data.transfer_snake_order || false,
+    transferOrder: data.transferOrder
+      ? data.transferOrder.map((item: any) => (item.S ? item.S : item))
+      : [],
+    transfer_window_status: data.transfer_window_status || "",
   };
 
   return draftInfo;
@@ -264,6 +280,12 @@ export const updateDraftSettings = async (
     current_team_turn_ends?: string;
     overall_pick?: number;
     current_round?: number;
+    // Transfer window fields
+    transfer_max_rounds?: number;
+    transfer_snake_order?: boolean;
+    transferOrder?: string[];
+    transfer_window_start?: string;
+    transfer_window_end?: string;
   }
 ): Promise<DraftInfo | null> => {
   try {
@@ -432,6 +454,41 @@ export const getTransferWindowInfo = async (leagueId: string): Promise<any> => {
     return response.data;
   } catch (error) {
     console.error("Error getting transfer window info:", error);
+    throw error;
+  }
+};
+
+export const startTransferWindow = async (
+  leagueId: string,
+  startTime: string,
+  endTime: string
+): Promise<any> => {
+  try {
+    const payload = {
+      league_id: leagueId,
+      transfer_window_start: startTime,
+      transfer_window_end: endTime,
+    };
+    console.log("🚀 Calling startTransferWindow API:", {
+      url: `${BASE_URL}/league/${leagueId}/transfer/start`,
+      payload,
+    });
+    const response = await axios.post(
+      `${BASE_URL}/league/${leagueId}/transfer/start`,
+      payload
+    );
+    console.log("✅ startTransferWindow response:", response.data);
+    return response.data;
+  } catch (error) {
+    console.error("❌ Error starting transfer window:", error);
+    if (axios.isAxiosError(error)) {
+      console.error("API Error details:", {
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
+    }
     throw error;
   }
 };

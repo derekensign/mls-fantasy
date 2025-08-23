@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.markUserDoneTransferring = exports.getDraftedPlayersByLeague = exports.advanceTransferTurn = exports.dropPlayer = exports.pickupPlayer = exports.getTransferWindowInfo = exports.joinLeague = exports.fetchDraftedPlayers = exports.fetchActiveParticipants = exports.joinDraftSession = exports.updateDraftSettings = exports.getLeagueSettings = exports.updateLeagueSettings = exports.fetchFantasyPlayersByLeague = exports.getDraftSettings = exports.fetchUserDetails = exports.fetchLeagueData = exports.draftPlayer = exports.initializeLeague = exports.fetchPlayers2025 = exports.fetchGoldenBootTable = void 0;
+exports.markUserDoneTransferring = exports.getDraftedPlayersByLeague = exports.advanceTransferTurn = exports.dropPlayer = exports.pickupPlayer = exports.startTransferWindow = exports.getTransferWindowInfo = exports.joinLeague = exports.fetchDraftedPlayers = exports.fetchActiveParticipants = exports.joinDraftSession = exports.updateDraftSettings = exports.getLeagueSettings = exports.updateLeagueSettings = exports.fetchFantasyPlayersByLeague = exports.getDraftSettings = exports.fetchUserDetails = exports.fetchLeagueData = exports.draftPlayer = exports.initializeLeague = exports.fetchPlayers2025 = exports.fetchGoldenBootTable = void 0;
 exports.createLeague = createLeague;
 exports.updateTeamProfile = updateTeamProfile;
 const axios_1 = __importDefault(require("axios"));
@@ -111,6 +111,15 @@ const getDraftSettings = async (leagueId) => {
         numberOfRounds: data.numberOfRounds || 5,
         activeParticipants: data.activeParticipants || [],
         current_team_turn_ends: data.current_team_turn_ends || "",
+        // Transfer window fields
+        transfer_window_start: data.transfer_window_start || "",
+        transfer_window_end: data.transfer_window_end || "",
+        transfer_max_rounds: data.transfer_max_rounds || 2,
+        transfer_snake_order: data.transfer_snake_order || false,
+        transferOrder: data.transferOrder
+            ? data.transferOrder.map((item) => (item.S ? item.S : item))
+            : [],
+        transfer_window_status: data.transfer_window_status || "",
     };
     return draftInfo;
 };
@@ -273,6 +282,36 @@ const getTransferWindowInfo = async (leagueId) => {
     }
 };
 exports.getTransferWindowInfo = getTransferWindowInfo;
+const startTransferWindow = async (leagueId, startTime, endTime) => {
+    var _a, _b, _c, _d;
+    try {
+        const payload = {
+            league_id: leagueId,
+            transfer_window_start: startTime,
+            transfer_window_end: endTime,
+        };
+        console.log("🚀 Calling startTransferWindow API:", {
+            url: `${BASE_URL}/league/${leagueId}/transfer/start`,
+            payload,
+        });
+        const response = await axios_1.default.post(`${BASE_URL}/league/${leagueId}/transfer/start`, payload);
+        console.log("✅ startTransferWindow response:", response.data);
+        return response.data;
+    }
+    catch (error) {
+        console.error("❌ Error starting transfer window:", error);
+        if (axios_1.default.isAxiosError(error)) {
+            console.error("API Error details:", {
+                status: (_a = error.response) === null || _a === void 0 ? void 0 : _a.status,
+                statusText: (_b = error.response) === null || _b === void 0 ? void 0 : _b.statusText,
+                data: (_c = error.response) === null || _c === void 0 ? void 0 : _c.data,
+                headers: (_d = error.response) === null || _d === void 0 ? void 0 : _d.headers,
+            });
+        }
+        throw error;
+    }
+};
+exports.startTransferWindow = startTransferWindow;
 const pickupPlayer = async (leagueId, playerId, teamId) => {
     var _a, _b, _c, _d;
     try {

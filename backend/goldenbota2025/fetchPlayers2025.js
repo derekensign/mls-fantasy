@@ -29,6 +29,7 @@ async function joinPlayersData() {
     id: String(p.id),
     name: `${p.first_name} ${p.last_name}`,
     squad_id: p.squad_id,
+    goals_2025: p.season_stats?.GL || 0, // Extract 2025 goals from season stats
   }));
 
   // 2. Fetch squads (teams) data.
@@ -77,7 +78,7 @@ async function joinPlayersData() {
       // For this example, we'll simply drop the goals logic.
       // You can add goals_2024 and goals_2025 as desired.
       goals_2024: corresponding2024 ? corresponding2024.Goals : 0,
-      goals_2025: 0,
+      goals_2025: player2025.goals_2025, // Use the extracted 2025 goals
     };
   });
 

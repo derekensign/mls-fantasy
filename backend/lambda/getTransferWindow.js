@@ -56,7 +56,7 @@ exports.handler = async (event) => {
 
     const draftRecord = draftResult.Item;
 
-    // Extract transfer window information
+    // Extract transfer window information (only transfer-related data)
     const transferWindowInfo = {
       status: draftRecord.transfer_window_status || "inactive",
       start: draftRecord.transfer_window_start || null,
@@ -64,20 +64,20 @@ exports.handler = async (event) => {
       currentTurn: draftRecord.transfer_current_turn_team || null,
       round: draftRecord.transfer_round || 1,
       maxRounds: draftRecord.transfer_max_rounds || 2,
-      draftOrder: draftRecord.draftOrder || draftRecord.draft_order || [],
+      transferOrder: draftRecord.transferOrder || [],
       transferActions: draftRecord.transfer_actions || [],
       activeTransfers: draftRecord.activeTransfers || {},
       finishedTransferringTeams: draftRecord.finishedTransferringTeams || [],
+      snakeOrder: draftRecord.transfer_snake_order || false,
     };
 
-    // Check if transfer window is currently active
-    const now = new Date().toISOString();
+    // Check if transfer window is currently active based on time comparison only
+    const now = new Date();
     const isActive =
-      transferWindowInfo.status === "active" &&
       transferWindowInfo.start &&
       transferWindowInfo.end &&
-      now >= transferWindowInfo.start &&
-      now <= transferWindowInfo.end;
+      new Date(transferWindowInfo.start) <= now &&
+      now <= new Date(transferWindowInfo.end);
 
     return {
       statusCode: 200,

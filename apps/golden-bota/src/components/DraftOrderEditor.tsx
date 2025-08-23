@@ -16,11 +16,13 @@ export interface FantasyPlayer {
 export interface DraftOrderEditorProps {
   fantasyPlayers: FantasyPlayer[];
   onOrderChange: (order: string[]) => void;
+  title?: string; // Optional title prop
 }
 
 const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
   fantasyPlayers,
   onOrderChange,
+  title = "Draft Order (Snake Draft)", // Default title
 }) => {
   const [players, setPlayers] = useState<FantasyPlayer[]>([]);
   const [mounted, setMounted] = useState(false);
@@ -55,7 +57,7 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
   return (
     <Paper sx={{ backgroundColor: "#B8860B", padding: 2, marginBottom: 2 }}>
       <Typography variant="h6" gutterBottom>
-        Draft Order (Snake Draft)
+        {title}
       </Typography>
       <Button
         variant="contained"

@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useRouter } from "next/router";
 import LeagueSettings from "../../components/LeagueSettings";
 import DraftSettings from "../../components/DraftSettings";
+import TransferWindowSettings from "../../components/TransferWindowSettings";
 import Container from "@mui/material/Container";
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
@@ -142,6 +143,22 @@ const LeaguePage: React.FC<LeaguePageProps> = ({
           <DraftSettings leagueId={leagueId} draftSettings={draftSettings} />
         </div>
       )}
+
+      {/* Transfer Window Settings Section: Render only if the user is the commissioner */}
+      {userIsCommissioner && (
+        <div className="mt-8">
+          <Typography
+            variant="h5"
+            sx={{ color: "white", marginBottom: "1rem" }}
+          >
+            Transfer Window Settings
+          </Typography>
+          <TransferWindowSettings
+            leagueId={leagueId}
+            draftSettings={draftSettings}
+          />
+        </div>
+      )}
     </Container>
   );
 };
@@ -162,14 +179,7 @@ function extractValue(value: any): any {
   return value;
 }
 
-export async function getStaticPaths() {
-  return {
-    paths: [], // List known league IDs here if available; otherwise, fallback to blocking
-    fallback: "blocking",
-  };
-}
-
-export async function getStaticProps({
+export async function getServerSideProps({
   params,
 }: {
   params: { leagueId: string };
@@ -207,7 +217,5 @@ export async function getStaticProps({
       draftSettings,
       commissionerEmail,
     },
-    // Revalidate this page every 60 seconds (adjust as needed)
-    revalidate: 60,
   };
 }

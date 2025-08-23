@@ -3,11 +3,13 @@ import Link from "next/link";
 import { useAuth } from "react-oidc-context";
 import useUserStore from "../stores/useUserStore"; // Import the user store
 import { useRouter } from "next/router";
+import { useTransferWindowStatus } from "../hooks/useTransferWindowStatus";
 
 function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
   const { leagueId } = router.query;
+  const { isTransferWindowActive } = useTransferWindowStatus();
 
   const handleLogin = () => auth.signinRedirect();
   const handleLogout = () => {
@@ -80,7 +82,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
         </Link>
 
         {/* Desktop menu */}
-        <div className="hidden md:flex space-x-4 ml-auto">
+        <div className="hidden md:flex space-x-4 ml-auto pr-4">
           {userDetails && (
             <>
               <Link
@@ -98,6 +100,14 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
               >
                 Table
               </Link>
+              {isTransferWindowActive && (
+                <Link
+                  href={`/league/${userDetails.LeagueId}/transfer`}
+                  className="text-white hover:text-gray-300"
+                >
+                  Transfer
+                </Link>
+              )}
             </>
           )}
         </div>
@@ -106,31 +116,40 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
         <div
           className={`${
             isOpen ? "block" : "hidden"
-          } md:hidden fixed left-0 w-full top-16 bg-gray-800 min-h-fit max-h-[1/4] z-40`}
+          } md:hidden fixed left-0 w-full top-16 bg-black min-h-fit max-h-[1/4] z-40`}
         >
           {userDetails && (
-            <div className="flex flex-col space-y-4 p-4 w-full">
+            <div className="flex flex-col space-y-2 p-3 w-full">
               <Link
                 href={leagueLink}
-                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                className="text-white hover:text-gray-300 text-lg py-1 w-full"
                 onClick={() => setIsOpen(false)}
               >
                 League
               </Link>
               <Link
                 href="/MyTeam"
-                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                className="text-white hover:text-gray-300 text-lg py-1 w-full"
                 onClick={() => setIsOpen(false)}
               >
                 My Team
               </Link>
               <Link
                 href={`/league/${userDetails.LeagueId}/table`}
-                className="text-white hover:text-gray-300 text-lg py-2 w-full"
+                className="text-white hover:text-gray-300 text-lg py-1 w-full"
                 onClick={() => setIsOpen(false)}
               >
                 Table
               </Link>
+              {isTransferWindowActive && (
+                <Link
+                  href={`/league/${userDetails.LeagueId}/transfer`}
+                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Transfer
+                </Link>
+              )}
             </div>
           )}
         </div>

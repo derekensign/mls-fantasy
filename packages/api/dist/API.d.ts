@@ -9,6 +9,12 @@ export interface DraftInfo {
     current_team_turn_ends?: string;
     overall_pick?: number;
     current_round?: number;
+    transfer_window_start?: string;
+    transfer_window_end?: string;
+    transfer_max_rounds?: number;
+    transfer_snake_order?: boolean;
+    transferOrder?: string[];
+    transfer_window_status?: string;
 }
 export interface GoldenBootTableResponse {
     TeamName: string;
@@ -81,6 +87,11 @@ export declare const updateDraftSettings: (leagueId: string, settings: {
     current_team_turn_ends?: string;
     overall_pick?: number;
     current_round?: number;
+    transfer_max_rounds?: number;
+    transfer_snake_order?: boolean;
+    transferOrder?: string[];
+    transfer_window_start?: string;
+    transfer_window_end?: string;
 }) => Promise<DraftInfo | null>;
 export declare const joinDraftSession: (leagueId: string, teamId: string) => Promise<any>;
 export declare const fetchActiveParticipants: (leagueId: string) => Promise<string[]>;
@@ -122,6 +133,7 @@ export interface UpdateTeamProfileResponse {
 export declare function updateTeamProfile(payload: UpdateTeamProfileRequest): Promise<UpdateTeamProfileResponse>;
 export declare const joinLeague: (leagueId: string, fantasyPlayerId: number) => Promise<any>;
 export declare const getTransferWindowInfo: (leagueId: string) => Promise<any>;
+export declare const startTransferWindow: (leagueId: string, startTime: string, endTime: string) => Promise<any>;
 export declare const pickupPlayer: (leagueId: string, playerId: string, teamId: string) => Promise<any>;
 export declare const dropPlayer: (leagueId: string, playerId: string, teamId: string) => Promise<any>;
 export declare const advanceTransferTurn: (leagueId: string) => Promise<any>;
