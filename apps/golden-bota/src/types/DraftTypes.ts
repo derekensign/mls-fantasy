@@ -34,11 +34,14 @@ export interface DraftInfo {
   overall_pick?: number;
   current_round?: number;
   // Transfer window fields
-  transfer_window_status?: "inactive" | "active" | "completed";
+  transfer_window_status?: string;
   transfer_window_start?: string;
   transfer_window_end?: string;
   transfer_current_turn_team?: string;
   transfer_round?: number;
+  transfer_max_rounds?: number;
+  transfer_snake_order?: boolean;
+  transferOrder?: string[];
 }
 
 export interface FantasyPlayer {

@@ -284,7 +284,13 @@ const TransferWindowPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [leagueId, actualUserFantasyPlayerId]);
+  }, [
+    leagueId,
+    actualUserFantasyPlayerId,
+    localTransferState.step,
+    localTransferState.droppedPlayerId,
+    transferInfo?.currentTurn,
+  ]);
 
   useEffect(() => {
     const loadUserDetails = async () => {
@@ -361,7 +367,13 @@ const TransferWindowPage: React.FC = () => {
     }, 3000); // Poll every 3 seconds for more responsive updates
 
     return () => clearInterval(interval);
-  }, [leagueId, actualUserFantasyPlayerId, userDataLoaded, loadTransferData]);
+  }, [
+    leagueId,
+    actualUserFantasyPlayerId,
+    userDataLoaded,
+    loadTransferData,
+    transferInfo?.currentTurn,
+  ]);
 
   // Safety timeout to prevent infinite loading
   useEffect(() => {
