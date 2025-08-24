@@ -27,14 +27,14 @@ export const useTransferWindowStatus = () => {
 
   useEffect(() => {
     const checkTransferWindowStatus = async () => {
-      if (!userDetails?.LeagueId) {
+      if (!userDetails?.leagueId) {
         setLoading(false);
         return;
       }
 
       try {
         const draftSettings = await getDraftSettings(
-          userDetails.LeagueId.toString()
+          userDetails.leagueId.toString()
         );
 
         if (draftSettings) {
@@ -65,7 +65,7 @@ export const useTransferWindowStatus = () => {
     const interval = setInterval(checkTransferWindowStatus, 30000);
 
     return () => clearInterval(interval);
-  }, [userDetails?.LeagueId]);
+  }, [userDetails?.leagueId]);
 
   return { isTransferWindowActive, loading };
 };
