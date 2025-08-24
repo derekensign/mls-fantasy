@@ -50,7 +50,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
   const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
   const [draftOver, setDraftOver] = useState<boolean>(false);
   const { userDetails } = useUserStore();
-  const userFantasyPlayerId = userDetails?.FantasyPlayerId?.toString();
+  const userFantasyPlayerId = userDetails?.fantasyPlayerId?.toString();
   const userIsAdmin = true; // TODO: Add this to the user details.
 
   // This ref will ensure that we run initialization only once.

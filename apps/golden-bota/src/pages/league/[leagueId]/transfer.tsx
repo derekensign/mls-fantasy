@@ -59,7 +59,7 @@ const TransferWindowPage: React.FC = () => {
 
   // Use local user details instead of store to avoid race conditions
   const userFantasyPlayerId = (
-    userDetails?.FantasyPlayerId || localUserDetails?.FantasyPlayerId
+    userDetails?.fantasyPlayerId || localUserDetails?.fantasyPlayerId
   )?.toString();
 
   // Use the database-derived FantasyPlayerId only
@@ -274,7 +274,14 @@ const TransferWindowPage: React.FC = () => {
           );
           if (userInfo && userInfo.length > 0) {
             setLocalUserDetails(userInfo[0]); // Store in local state
-            setUserDetails(userInfo[0]); // Also update store
+            // Transform API response to match UserDetails interface
+            setUserDetails({
+              email: auth.user.profile.email || "",
+              fantasyPlayerName: userInfo[0].FantasyPlayerName,
+              leagueId: Number(userInfo[0].LeagueId),
+              teamName: userInfo[0].TeamName,
+              fantasyPlayerId: Number(userInfo[0].FantasyPlayerId),
+            }); // Also update store
             setUserDataLoaded(true);
           } else {
             // No user details found for this league - user might not be in this league

@@ -33,7 +33,7 @@ function JoinLeagueContent() {
     try {
       const result = await joinLeague(
         selectedLeague.leagueId,
-        userDetails.FantasyPlayerId
+        userDetails.fantasyPlayerId
       );
       alert("Successfully joined the league!");
       setSelectedLeague(null);
@@ -87,7 +87,7 @@ function CreateLeagueContent() {
     try {
       const response = await createLeague({
         leagueName: leagueName.trim(),
-        fantasyPlayerId: userDetails.FantasyPlayerId.toString(),
+        fantasyPlayerId: userDetails.fantasyPlayerId.toString(),
         commissionerEmail: userDetails.email,
       });
 
@@ -189,8 +189,8 @@ function LeaguePage() {
   useEffect(() => {
     if (!mounted) return;
 
-    if (auth.isAuthenticated && userDetails?.LeagueId) {
-      router.push(`/league/${userDetails?.LeagueId}`);
+    if (auth.isAuthenticated && userDetails?.leagueId) {
+      router.push(`/league/${userDetails?.leagueId}`);
     }
   }, [mounted, auth.isAuthenticated, userDetails, router]);
 
@@ -212,7 +212,7 @@ function LeaguePage() {
     );
   }
 
-  if (userDetails?.LeagueId) return null;
+  if (userDetails?.leagueId) return null;
 
   return (
     <Container>

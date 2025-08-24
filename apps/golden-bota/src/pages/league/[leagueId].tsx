@@ -30,7 +30,7 @@ const LeaguePage: React.FC<LeaguePageProps> = ({
 }) => {
   const router = useRouter();
   const { userDetails } = useUserStore();
-  const userFantasyPlayerId = userDetails?.FantasyPlayerId?.toString();
+  const userFantasyPlayerId = userDetails?.fantasyPlayerId?.toString();
   const [hasJoined, setHasJoined] = useState<boolean>(false);
   const [draftStartTime, setDraftStartTime] = useState<Date | null>(null);
 
