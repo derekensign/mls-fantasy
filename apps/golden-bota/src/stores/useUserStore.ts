@@ -27,7 +27,10 @@ interface UserStore {
   userDetails: UserDetails | null;
   setUserDetails: (details: UserDetails) => void;
   clearUserDetails: () => void;
-  fetchUserDetails: (email: string, leagueId?: string) => Promise<void>;
+  fetchUserDetails: (
+    email: string,
+    leagueId?: string
+  ) => Promise<UserDetails | null>;
 }
 
 const useUserStore = create<UserStore>((set) => ({
@@ -48,10 +51,22 @@ const useUserStore = create<UserStore>((set) => ({
       );
 
       if (response.ok) {
-        const rawData = await response.json();
+        const rawData: RawUserDetailsResponse = await response.json();
 
         if (rawData.teams && rawData.teams.length > 0) {
-          const userDetails = rawData.teams[0];
+          const rawUserDetails = rawData.teams[0];
+
+          // Map the raw API response to the expected UserDetails format
+          const userDetails: UserDetails = {
+            email: rawUserDetails.emailAddress, // Map emailAddress to email
+            fantasyPlayerName: rawUserDetails.fantasyPlayerName,
+            teamName: rawUserDetails.teamName,
+            fantasyPlayerId: Number(rawUserDetails.fantasyPlayerId),
+            leagueId: rawUserDetails.leagueId
+              ? Number(rawUserDetails.leagueId)
+              : 0,
+          };
+
           set({ userDetails });
           return userDetails;
         }

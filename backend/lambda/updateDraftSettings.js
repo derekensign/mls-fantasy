@@ -122,6 +122,18 @@ export const handler = async (event) => {
       expressionAttributeValues[":transfer_window_end"] =
         body.transfer_window_end;
     }
+    if (body.transfer_window_status !== undefined) {
+      updateFields.push("transfer_window_status = :transfer_window_status");
+      expressionAttributeValues[":transfer_window_status"] =
+        body.transfer_window_status;
+    }
+    if (body.transfer_current_turn_team !== undefined) {
+      updateFields.push(
+        "transfer_current_turn_team = :transfer_current_turn_team"
+      );
+      expressionAttributeValues[":transfer_current_turn_team"] =
+        body.transfer_current_turn_team;
+    }
 
     if (updateFields.length === 0) {
       throw new Error("No fields provided to update.");

@@ -93,15 +93,30 @@ export const handler = async (event) => {
       JSON.stringify(fantasyPlayersResponse.Items, null, 2)
     );
 
+    // Get draft record to check transfer window dates
+    const draftRecordCommand = new AWS.GetCommand({
+      TableName: "Draft",
+      Key: { league_id: leagueId },
+    });
+    const draftRecordResponse = await docClient.send(draftRecordCommand);
+    const draftRecord = draftRecordResponse.Item;
+    const transferWindowStart = draftRecord?.transfer_window_start;
+
     // Helper function to determine transfer status and calculate goals
-    const getPlayerTransferInfo = (draftedPlayer, playerDetails) => {
+    const getPlayerTransferInfo = (
+      draftedPlayer,
+      playerDetails,
+      transferWindowStart
+    ) => {
       const playerId = draftedPlayer.player_id;
       const playerName = playerDetails?.name || `Player ${playerId}`;
       const totalGoals = playerDetails?.goals_2025 || 0;
 
       // Check if player was transferred
       const wasDropped = draftedPlayer.dropped === true;
-      const wasPickedUp = draftedPlayer.picked_up_at !== undefined;
+      const wasPickedUp =
+        draftedPlayer.picked_up_at !== undefined &&
+        draftedPlayer.picked_up_at !== null;
       const goalsAtDrop = draftedPlayer.goals_at_drop || 0;
       const goalsBeforePickup = draftedPlayer.goals_before_pickup || 0;
 
@@ -110,19 +125,33 @@ export const handler = async (event) => {
       let joinedDate = null;
       let leftDate = null;
 
-      if (wasPickedUp && !wasDropped) {
-        // Player was transferred IN to this team
+      // Check if this pickup happened during a transfer window (not during original draft)
+      let isTransferPickup = false;
+
+      if (wasPickedUp && draftedPlayer.picked_up_at && transferWindowStart) {
+        const pickupDate = new Date(draftedPlayer.picked_up_at);
+        const windowStart = new Date(transferWindowStart);
+
+        // If pickup happened after transfer window started, it's a transfer
+        isTransferPickup = pickupDate >= windowStart;
+        console.log(
+          `📅 Player ${playerName}: pickup=${pickupDate.toISOString()}, windowStart=${windowStart.toISOString()}, isTransfer=${isTransferPickup}`
+        );
+      }
+
+      if (isTransferPickup && !wasDropped) {
+        // Player was transferred IN to this team during transfer window
         transferStatus = `Transferred In: ${playerName}`;
         joinedDate = draftedPlayer.picked_up_at;
         // Only count goals scored AFTER joining this team
         calculatedGoals = Math.max(0, totalGoals - goalsBeforePickup);
-      } else if (wasDropped && !wasPickedUp) {
+      } else if (wasDropped && !isTransferPickup) {
         // Player was transferred OUT from this team
         transferStatus = `Transferred Out: ${playerName}`;
         leftDate = draftedPlayer.dropped_at;
         // Only count goals scored BEFORE leaving this team
         calculatedGoals = goalsAtDrop;
-      } else if (wasPickedUp && wasDropped) {
+      } else if (isTransferPickup && wasDropped) {
         // Player was both picked up and dropped (transferred in then out)
         transferStatus = `Transferred In/Out: ${playerName}`;
         joinedDate = draftedPlayer.picked_up_at;
@@ -156,7 +185,7 @@ export const handler = async (event) => {
         (dp) => dp.team_drafted_by === String(fp.FantasyPlayerId)
       ).map((dp) => {
         const playerDetails = playersMap.get(dp.player_id);
-        return getPlayerTransferInfo(dp, playerDetails);
+        return getPlayerTransferInfo(dp, playerDetails, transferWindowStart);
       });
 
       // Calculate total goals for this fantasy team (using transfer-adjusted goals)

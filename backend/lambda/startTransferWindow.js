@@ -1,5 +1,9 @@
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
-import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  UpdateCommand,
+  GetCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dynamoDB);
@@ -48,6 +52,33 @@ export const handler = async (event) => {
       };
     }
 
+    // First, get the current draft record to access transferOrder or draftOrder
+    const getParams = {
+      TableName: "Draft",
+      Key: { league_id: league_id.toString() },
+    };
+
+    const draftResult = await docClient.send(new GetCommand(getParams));
+
+    if (!draftResult.Item) {
+      return {
+        statusCode: 404,
+        headers: commonHeaders,
+        body: JSON.stringify({
+          message: "Draft record not found for this league",
+        }),
+      };
+    }
+
+    const draftRecord = draftResult.Item;
+
+    // Determine the transfer order to use
+    const transferOrder =
+      draftRecord.transferOrder || draftRecord.draftOrder || [];
+
+    // Set the first team in the order as the current turn
+    const firstTeam = transferOrder.length > 0 ? transferOrder[0] : null;
+
     // Update the Draft table to start the transfer window
     const updateParams = {
       TableName: "Draft",
@@ -56,12 +87,14 @@ export const handler = async (event) => {
         transfer_window_status = :status,
         transfer_window_start = :start,
         transfer_window_end = :end,
-        transfer_round = :round`,
+        transfer_round = :round,
+        transfer_current_turn_team = :currentTurn`,
       ExpressionAttributeValues: {
         ":status": "active",
         ":start": transfer_window_start,
         ":end": transfer_window_end,
         ":round": 1,
+        ":currentTurn": firstTeam,
       },
       ReturnValues: "ALL_NEW",
     };
@@ -74,6 +107,7 @@ export const handler = async (event) => {
       body: JSON.stringify({
         message: "Transfer window started successfully",
         data: result.Attributes,
+        currentTurn: firstTeam,
       }),
     };
   } catch (error) {

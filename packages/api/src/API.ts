@@ -297,11 +297,13 @@ export const updateDraftSettings = async (
     transferOrder?: string[];
     transfer_window_start?: string;
     transfer_window_end?: string;
+    transfer_window_status?: string;
+    transfer_current_turn_team?: string;
   }
 ): Promise<DraftInfo | null> => {
   try {
     const response: AxiosResponse<DraftInfo> = await axios.post(
-      `${BASE_URL}/league/${leagueId}/draft-settings`,
+      `${BASE_URL}/draft/${leagueId}/data`,
       settings
     );
     return response.data;

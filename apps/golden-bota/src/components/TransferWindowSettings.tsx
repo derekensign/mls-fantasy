@@ -14,8 +14,10 @@ import {
 } from "@mui/material";
 import {
   getDraftSettings,
-  fetchFantasyPlayersByLeague,
   fetchGoldenBootTable,
+  GoldenBootTableResponse,
+  updateDraftSettings,
+  getTransferWindowInfo,
 } from "@mls-fantasy/api";
 import DraftOrderEditor from "./DraftOrderEditor";
 import axios from "axios";
@@ -98,33 +100,199 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
   // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
     const initializeTransferOrder = async () => {
-      if (!draftSettings || !extractValue || !leagueId || isInitialized) return;
+      console.log("🔍 Initialize transfer order called with:", {
+        hasDraftSettings: !!draftSettings,
+        hasExtractValue: !!extractValue,
+        leagueId,
+        orderedPlayersLength: orderedPlayers.length,
+      });
+
+      if (
+        !draftSettings ||
+        !extractValue ||
+        !leagueId ||
+        orderedPlayers.length === 0
+      ) {
+        console.log("❌ Skipping initialization - missing requirements");
+        return;
+      }
 
       try {
+        // Always create transfer order based on reverse standings (default behavior)
+        if (orderedPlayers.length > 0) {
+          console.log(
+            "🔄 Setting transfer order from reverse standings (default)"
+          );
+          console.log(
+            "📊 Current orderedPlayers:",
+            orderedPlayers.map(
+              (p) => `${p.FantasyPlayerName}: ${p.TotalGoals} goals`
+            )
+          );
+
+          // Sort teams by TotalGoals ascending (worst teams first for transfer priority)
+          const sortedTeams = [...orderedPlayers].sort((a, b) => {
+            // Handle undefined/null TotalGoals - treat as 0 for sorting
+            const aGoals = a.TotalGoals ?? 0;
+            const bGoals = b.TotalGoals ?? 0;
+            return aGoals - bGoals;
+          });
+
+          console.log(
+            "📊 Sorted teams (worst first):",
+            sortedTeams.map(
+              (p) => `${p.FantasyPlayerName}: ${p.TotalGoals ?? 0} goals`
+            )
+          );
+
+          // Create transfer order IDs (ensure they are strings for drag-and-drop)
+          const newTransferOrderIds = sortedTeams.map((player) =>
+            String(player.FantasyPlayerId || "")
+          );
+
+          console.log("📊 Reverse standings order IDs:", newTransferOrderIds);
+          setTransferOrderIds(newTransferOrderIds);
+
+          // Add a small delay to ensure state update is complete
+          setTimeout(() => {
+            console.log("✅ Transfer order IDs set successfully");
+          }, 0);
+        }
+
+        // Initialize other settings from draftSettings
+        setMaxRounds(extractValue(draftSettings.transfer_max_rounds) || 2);
+        setIsSnakeOrder(
+          extractValue(draftSettings.transfer_snake_order) || false
+        );
+
+        // Initialize transfer window timing if available
+        const startTime = extractValue(draftSettings.transfer_window_start);
+        const endTime = extractValue(draftSettings.transfer_window_end);
+
+        if (startTime) {
+          setTransferStartTime(formatDateTimeLocal(startTime));
+        }
+        if (endTime) {
+          setTransferEndTime(formatDateTimeLocal(endTime));
+        }
+
+        // Check if transfer window is currently active using the calculated status
+        try {
+          const transferWindowInfo = await getTransferWindowInfo(leagueId);
+          const calculatedStatus = transferWindowInfo?.transferWindow?.status;
+          console.log("🔍 Transfer window status:", calculatedStatus);
+          setIsTransferWindowActive(calculatedStatus === "active");
+        } catch (error) {
+          console.error("Error getting transfer window status:", error);
+          // Fallback to database field if API call fails
+          const status = extractValue(draftSettings.transfer_window_status);
+          setIsTransferWindowActive(status === "active");
+        }
+
         setIsInitialized(true);
       } catch (error) {
-        // Handle error silently
+        console.error("Error initializing transfer order:", error);
       }
     };
 
     initializeTransferOrder();
-  }, [draftSettings, extractValue, leagueId, orderedPlayers, isInitialized]);
+  }, [draftSettings, extractValue, leagueId, orderedPlayers]);
 
   // Fetch fantasy players for the order editor
   useEffect(() => {
-    const fetchStandings = async () => {
-      if (!leagueId) return;
-
+    const fetchData = async () => {
       try {
-        const standings = await fetchGoldenBootTable(String(leagueId));
-        setOrderedPlayers(standings);
+        console.log("📈 Fetching Golden Boot table data...");
+        const goldenBootData = await fetchGoldenBootTable(String(leagueId));
+        console.log("📈 Fetched standings:", goldenBootData);
+
+        // Sort the Golden Boot data by TotalGoals (worst first)
+        const sortedStandings = [...goldenBootData].sort((a, b) => {
+          const aGoals = a.TotalGoals ?? 0;
+          const bGoals = b.TotalGoals ?? 0;
+          return aGoals - bGoals;
+        });
+
+        console.log(
+          "📊 Sorted standings (worst first):",
+          sortedStandings.map(
+            (p) => `${p.FantasyPlayerName}: ${p.TotalGoals ?? 0} goals`
+          )
+        );
+
+        // Create transfer order IDs using the FantasyPlayerName as the ID
+        // Since Golden Boot table doesn't have FantasyPlayerId, we'll use the name as the identifier
+        const newTransferOrderIds = sortedStandings
+          .map((player) => player.FantasyPlayerName || "")
+          .filter(Boolean);
+
+        console.log(
+          "📊 Final transfer order IDs (using names):",
+          newTransferOrderIds
+        );
+
+        // Set the ordered players (use the sorted standings data)
+        setOrderedPlayers(sortedStandings);
+        setTransferOrderIds(newTransferOrderIds);
       } catch (error) {
-        // Handle error silently
+        console.error("Error fetching data:", error);
       }
     };
 
-    fetchStandings();
+    if (leagueId) {
+      fetchData();
+    }
   }, [leagueId]);
+
+  // Reorder players based on transferOrderIds when either changes
+  const [displayPlayers, setDisplayPlayers] = useState<any[]>([]);
+
+  useEffect(() => {
+    console.log("🔄 DisplayPlayers useEffect called with:", {
+      orderedPlayersLength: orderedPlayers.length,
+      transferOrderIdsLength: transferOrderIds.length,
+      transferOrderIds,
+      orderedPlayers: orderedPlayers.map((p) => ({
+        name: p.FantasyPlayerName,
+        goals: p.TotalGoals ?? 0,
+      })),
+    });
+
+    if (orderedPlayers.length === 0 || transferOrderIds.length === 0) {
+      console.log("⚠️ Using original order - missing data");
+      setDisplayPlayers(orderedPlayers);
+      return;
+    }
+
+    // Reorder players based on transferOrderIds (using names as identifiers)
+    const reorderedPlayers = transferOrderIds
+      .map((name) =>
+        orderedPlayers.find((player) => player.FantasyPlayerName === name)
+      )
+      .filter(Boolean); // Remove any undefined entries
+
+    console.log(
+      "🔄 Reordered players:",
+      reorderedPlayers.map(
+        (p) => `${p.FantasyPlayerName}: ${p.TotalGoals ?? 0} goals`
+      )
+    );
+
+    // Add any players not in transferOrderIds to the end
+    const remainingPlayers = orderedPlayers.filter(
+      (player) => !transferOrderIds.includes(player.FantasyPlayerName || "")
+    );
+
+    const finalOrder = [...reorderedPlayers, ...remainingPlayers];
+    console.log(
+      "🔄 Final display order:",
+      finalOrder.map(
+        (p) => `${p.FantasyPlayerName} (${p.TotalGoals ?? 0} goals)`
+      )
+    );
+
+    setDisplayPlayers(finalOrder);
+  }, [orderedPlayers, transferOrderIds]);
 
   const handleOrderChange = (newOrder: string[]) => {
     setTransferOrderIds(newOrder);
@@ -176,10 +344,7 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
       }
 
       // Make a single API call to update all settings
-      const response = await axios.post(
-        `${BASE_URL}/league/${leagueId}/draft-settings`,
-        updateData
-      );
+      const response = await updateDraftSettings(leagueId, updateData);
 
       setSuccessMessage(
         Boolean(isTransferWindowActive)
@@ -332,13 +497,14 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
           >
             {Boolean(isTransferWindowActive)
               ? "Transfer order is locked while window is active."
-              : `Drag and drop to set the order for transfer window turns. 
+              : `Transfer order is automatically set based on current standings (worst teams first). 
                  ${
                    Boolean(isSnakeOrder)
                      ? " Snake order will reverse direction each round."
-                     : " Regular order repeats the same sequence each round."
+                     : " Order stays the same each round."
                  }`}
           </Typography>
+
           <div
             style={{
               opacity: Boolean(isTransferWindowActive) ? 0.6 : 1,
@@ -346,7 +512,7 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
             }}
           >
             <DraftOrderEditor
-              fantasyPlayers={orderedPlayers}
+              fantasyPlayers={displayPlayers}
               onOrderChange={handleOrderChange}
               title="Transfer Order"
             />

@@ -81,7 +81,7 @@ export interface TransferWindowInfo {
   end: string;
   currentTurn?: string;
   round: number;
-  draftOrder: string[];
+  transferOrder: string[];
   transferActions: TransferAction[];
   isActive: boolean;
   timeRemaining?: number;

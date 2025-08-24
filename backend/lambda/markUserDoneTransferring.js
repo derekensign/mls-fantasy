@@ -102,8 +102,18 @@ export const handler = async (event) => {
       );
 
       // Import the advance function logic
-      const draftOrder =
-        draftRecord.draftOrder || draftRecord.draft_order || [];
+      // Determine if we're in a transfer window or draft session
+      const isTransferWindow =
+        draftRecord.transfer_window_status === "active" ||
+        draftRecord.transfer_current_turn_team !== null;
+
+      // Use transferOrder for transfers, draftOrder for drafts
+      const draftOrder = isTransferWindow
+        ? draftRecord.transferOrder ||
+          draftRecord.draftOrder ||
+          draftRecord.draft_order ||
+          []
+        : draftRecord.draftOrder || draftRecord.draft_order || [];
       const currentTurn = draftRecord.transfer_current_turn_team;
       const currentRound = draftRecord.transfer_round || 1;
       const maxRounds = draftRecord.transfer_max_rounds || 2;

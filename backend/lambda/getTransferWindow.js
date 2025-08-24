@@ -56,6 +56,16 @@ exports.handler = async (event) => {
 
     const draftRecord = draftResult.Item;
 
+    // Determine if we're in a transfer window or draft session
+    const isTransferWindow =
+      draftRecord.transfer_window_status === "active" ||
+      draftRecord.transfer_current_turn_team !== null;
+
+    // Use transferOrder for transfers, draftOrder for drafts
+    const orderToUse = isTransferWindow
+      ? draftRecord.transferOrder || draftRecord.draftOrder || []
+      : draftRecord.draftOrder || [];
+
     // Extract transfer window information (only transfer-related data)
     const transferWindowInfo = {
       status: draftRecord.transfer_window_status || "inactive",
@@ -64,7 +74,7 @@ exports.handler = async (event) => {
       currentTurn: draftRecord.transfer_current_turn_team || null,
       round: draftRecord.transfer_round || 1,
       maxRounds: draftRecord.transfer_max_rounds || 2,
-      transferOrder: draftRecord.transferOrder || [],
+      transferOrder: orderToUse,
       transferActions: draftRecord.transfer_actions || [],
       activeTransfers: draftRecord.activeTransfers || {},
       finishedTransferringTeams: draftRecord.finishedTransferringTeams || [],
@@ -79,6 +89,21 @@ exports.handler = async (event) => {
       new Date(transferWindowInfo.start) <= now &&
       now <= new Date(transferWindowInfo.end);
 
+    // Determine the correct status based on time comparison
+    let calculatedStatus = "inactive";
+    if (transferWindowInfo.start && transferWindowInfo.end) {
+      const startTime = new Date(transferWindowInfo.start);
+      const endTime = new Date(transferWindowInfo.end);
+
+      if (now < startTime) {
+        calculatedStatus = "pending";
+      } else if (now >= startTime && now <= endTime) {
+        calculatedStatus = "active";
+      } else {
+        calculatedStatus = "completed";
+      }
+    }
+
     return {
       statusCode: 200,
       headers: {
@@ -91,6 +116,7 @@ exports.handler = async (event) => {
       body: JSON.stringify({
         transferWindow: {
           ...transferWindowInfo,
+          status: calculatedStatus, // Use calculated status instead of database status
           isActive: isActive,
           timeRemaining:
             isActive && transferWindowInfo.end

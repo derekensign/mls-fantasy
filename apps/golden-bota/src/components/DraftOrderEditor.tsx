@@ -8,9 +8,10 @@ import {
 import { Paper, Button, Typography } from "@mui/material";
 
 export interface FantasyPlayer {
-  FantasyPlayerId: string;
-  TeamName: string;
+  FantasyPlayerId?: string; // Make optional since Golden Boot data doesn't have this
+  TeamName?: string; // Make optional since Golden Boot data doesn't have this
   FantasyPlayerName: string;
+  TotalGoals?: number; // Add this for Golden Boot data
 }
 
 export interface DraftOrderEditorProps {
@@ -43,13 +44,15 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
     const [removed] = newPlayers.splice(result.source.index, 1);
     newPlayers.splice(result.destination.index, 0, removed);
     setPlayers(newPlayers);
-    onOrderChange(newPlayers.map((p) => p.FantasyPlayerId));
+    // Use FantasyPlayerName as the identifier since Golden Boot data doesn't have FantasyPlayerId
+    onOrderChange(newPlayers.map((p) => p.FantasyPlayerName));
   };
 
   const randomizeOrder = () => {
     const randomized = Array.from(players).sort(() => Math.random() - 0.5);
     setPlayers(randomized);
-    onOrderChange(randomized.map((p) => p.FantasyPlayerId));
+    // Use FantasyPlayerName as the identifier
+    onOrderChange(randomized.map((p) => p.FantasyPlayerName));
   };
 
   if (!mounted) return null;
@@ -72,8 +75,8 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
             <div ref={provided.innerRef} {...provided.droppableProps}>
               {players.map((player, index) => (
                 <Draggable
-                  key={player.FantasyPlayerId}
-                  draggableId={player.FantasyPlayerId}
+                  key={player.FantasyPlayerName}
+                  draggableId={player.FantasyPlayerName}
                   index={index}
                 >
                   {(provided: any, snapshot: any) => (
@@ -90,7 +93,10 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
                         cursor: "move",
                       }}
                     >
-                      {player.TeamName} - {player.FantasyPlayerName}
+                      {player.TeamName ? `${player.TeamName} - ` : ""}
+                      {player.FantasyPlayerName}
+                      {player.TotalGoals !== undefined &&
+                        ` (${player.TotalGoals} goals)`}
                     </Paper>
                   )}
                 </Draggable>
