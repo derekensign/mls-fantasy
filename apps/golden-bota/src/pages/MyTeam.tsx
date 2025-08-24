@@ -192,7 +192,7 @@ export default function MyTeam() {
     try {
       // Prepare payload.
       const payload = {
-        FantasyPlayerId: userDetails?.FantasyPlayerId,
+        FantasyPlayerId: userDetails?.fantasyPlayerId,
         TeamName: team.teamName,
         TeamLogo: team.teamLogo,
         FantasyPlayerName: playerName,
@@ -206,11 +206,11 @@ export default function MyTeam() {
       // we use our existing data for those fields.
       setUserDetails({
         ...userDetails,
-        FantasyPlayerId: updatedProfile.FantasyPlayerId,
-        FantasyPlayerName: playerName,
-        TeamName: updatedProfile.TeamName,
+        fantasyPlayerId: updatedProfile.FantasyPlayerId,
+        fantasyPlayerName: playerName,
+        teamName: updatedProfile.TeamName,
         email: auth.user!.profile.email ?? "",
-        LeagueId: userDetails?.LeagueId ?? "",
+        leagueId: userDetails?.leagueId ?? 0,
       });
     } catch (error: any) {
       console.error("Error updating profile:", error);
