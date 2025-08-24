@@ -98,142 +98,12 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
   // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
     const initializeTransferOrder = async () => {
-      if (!isInitialized) {
-        // If draftSettings exists, use it to initialize settings
-        if (draftSettings) {
-          console.log("draftSettings received:", draftSettings);
-          console.log("Available fields:", Object.keys(draftSettings));
+      if (!draftSettings || !extractValue || !leagueId || isInitialized) return;
 
-          // Extract transfer window specific settings first
-          const startTime =
-            extractValue(draftSettings.transfer_window_start) || "";
-          const endTime = extractValue(draftSettings.transfer_window_end) || "";
-          const rounds = extractValue(draftSettings.transfer_max_rounds) || 2;
-          const snake = Boolean(
-            extractValue(draftSettings.transfer_snake_order) || false
-          );
-
-          setTransferStartTime(formatDateTimeLocal(startTime));
-          setTransferEndTime(formatDateTimeLocal(endTime));
-          setMaxRounds(rounds);
-          setIsSnakeOrder(snake);
-
-          // Check if transfer window is currently active
-          const windowStatus = extractValue(
-            draftSettings.transfer_window_status
-          );
-          const windowStart = extractValue(draftSettings.transfer_window_start);
-          const windowEnd = extractValue(draftSettings.transfer_window_end);
-          const now = new Date();
-
-          const isActive =
-            windowStatus === "active" ||
-            (windowStart &&
-              windowEnd &&
-              new Date(windowStart) <= now &&
-              now <= new Date(windowEnd));
-
-          setIsTransferWindowActive(Boolean(isActive));
-
-          // If transfer window is active and we already have a transfer order, use it
-          // Don't regenerate the order based on current standings
-          if (
-            Boolean(isActive) &&
-            draftSettings.transferOrder &&
-            draftSettings.transferOrder.length > 0
-          ) {
-            const existingOrder = draftSettings.transferOrder.map((item: any) =>
-              String(item.S ? item.S : extractValue(item))
-            );
-            setTransferOrderIds(existingOrder);
-            setIsInitialized(true);
-            return; // Don't fetch new standings, use existing order
-          }
-
-          // Try to get current standings to create reverse order for transfers
-          try {
-            const standings = await fetchGoldenBootTable(leagueId);
-            if (standings && standings.length > 0) {
-              // Create transfer order as reverse of current standings
-              // Worst performing teams get first pick in transfers
-              const standingsOrder = standings
-                .sort((a, b) => b.TotalGoals - a.TotalGoals) // Sort by goals descending (best to worst)
-                .map((team) => {
-                  // Find the FantasyPlayerId for this team
-                  const player = orderedPlayers.find(
-                    (p) => p.TeamName === team.TeamName
-                  );
-                  return player ? String(player.FantasyPlayerId) : null;
-                })
-                .filter((id): id is string => id !== null); // Type-safe filter to remove nulls
-
-              // Reverse the standings so worst teams go first in transfers
-              setTransferOrderIds([...standingsOrder].reverse());
-            } else {
-              // Fallback to draft order reversed if standings not available
-              if (
-                draftSettings.draftOrder &&
-                draftSettings.draftOrder.length > 0
-              ) {
-                const plainOrder = draftSettings.draftOrder.map((item: any) =>
-                  String(item.S ? item.S : extractValue(item))
-                );
-                setTransferOrderIds([...plainOrder].reverse());
-              }
-            }
-          } catch (error) {
-            console.error(
-              "Error fetching standings for transfer order:",
-              error
-            );
-            // Fallback to draft order reversed
-            if (
-              draftSettings.draftOrder &&
-              draftSettings.draftOrder.length > 0
-            ) {
-              const plainOrder = draftSettings.draftOrder.map((item: any) =>
-                String(item.S ? item.S : extractValue(item))
-              );
-              setTransferOrderIds([...plainOrder].reverse());
-            }
-          }
-        }
-
-        // If no draftSettings, still try to set up reverse standings order
-        if (!draftSettings) {
-          try {
-            console.log(
-              "No draftSettings, fetching standings for transfer order..."
-            );
-            const standings = await fetchGoldenBootTable(leagueId);
-            console.log("Fetched standings:", standings);
-            console.log("Available orderedPlayers:", orderedPlayers);
-            if (standings && standings.length > 0) {
-              // Create transfer order as reverse of current standings
-              // Worst performing teams get first pick in transfers
-              const standingsOrder = standings
-                .sort((a, b) => b.TotalGoals - a.TotalGoals) // Sort by goals descending (best to worst)
-                .map((team) => {
-                  // Find the FantasyPlayerId for this team
-                  const player = orderedPlayers.find(
-                    (p) => p.TeamName === team.TeamName
-                  );
-                  return player ? String(player.FantasyPlayerId) : null;
-                })
-                .filter((id): id is string => id !== null); // Type-safe filter to remove nulls
-
-              // Reverse the standings so worst teams go first in transfers
-              setTransferOrderIds([...standingsOrder].reverse());
-            }
-          } catch (error) {
-            console.error(
-              "Error fetching standings for transfer order:",
-              error
-            );
-          }
-        }
-
+      try {
         setIsInitialized(true);
+      } catch (error) {
+        // Handle error silently
       }
     };
 
@@ -242,40 +112,19 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
 
   // Fetch fantasy players for the order editor
   useEffect(() => {
-    const fetchPlayers = async () => {
+    const fetchStandings = async () => {
+      if (!leagueId) return;
+
       try {
-        const players = await fetchFantasyPlayersByLeague(leagueId);
-        if (players && Array.isArray(players)) {
-          // Ensure all FantasyPlayerId values are strings
-          const normalizedPlayers = players.map((player) => ({
-            ...player,
-            FantasyPlayerId: String(player.FantasyPlayerId),
-          }));
-
-          const orderedPlayerList = transferOrderIds
-            .map((id) =>
-              normalizedPlayers.find(
-                (player) => player.FantasyPlayerId === String(id)
-              )
-            )
-            .filter(Boolean);
-
-          const remainingPlayers = normalizedPlayers.filter(
-            (player) => !transferOrderIds.includes(player.FantasyPlayerId)
-          );
-
-          setOrderedPlayers([...orderedPlayerList, ...remainingPlayers]);
-        }
+        const standings = await fetchGoldenBootTable(String(leagueId));
+        setOrderedPlayers(standings);
       } catch (error) {
-        console.error("Error fetching fantasy players:", error);
-        setError("Failed to load fantasy players");
+        // Handle error silently
       }
     };
 
-    if (leagueId) {
-      fetchPlayers();
-    }
-  }, [leagueId, transferOrderIds]);
+    fetchStandings();
+  }, [leagueId]);
 
   const handleOrderChange = (newOrder: string[]) => {
     setTransferOrderIds(newOrder);
@@ -326,15 +175,11 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
         }
       }
 
-      console.log("Sending update data:", updateData);
-
       // Make a single API call to update all settings
       const response = await axios.post(
         `${BASE_URL}/league/${leagueId}/draft-settings`,
         updateData
       );
-
-      console.log("API response:", response.data);
 
       setSuccessMessage(
         Boolean(isTransferWindowActive)

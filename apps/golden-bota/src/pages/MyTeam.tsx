@@ -199,7 +199,7 @@ export default function MyTeam() {
         Email: auth.user!.profile.email!,
       };
       const updatedProfile = await updateTeamProfile(payload);
-      console.log("Updated profile:", updatedProfile);
+
       alert("Profile updated successfully!");
 
       // Update user details. Since the API response doesn't include FantasyPlayerName or TeamLogo,

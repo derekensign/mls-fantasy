@@ -25,29 +25,22 @@ function JoinLeagueContent() {
 
   const handleLeagueSelect = (league: LeagueSetting | null) => {
     setSelectedLeague(league);
-    console.log("Selected league: ", league);
   };
 
   const handleJoinLeague = async () => {
-    if (selectedLeague) {
-      if (!userDetails) {
-        console.warn("User details not available");
-        return;
-      }
-      try {
-        console.log("Joining league:", selectedLeague);
-        const result = await joinLeague(
-          selectedLeague.leagueId,
-          userDetails.FantasyPlayerId
-        );
-        console.log("Joined league successfully:", result);
-        // Redirect to /league/{leagueId}
-        router.push(`/league/${selectedLeague.leagueId}`);
-      } catch (error) {
-        console.error("Error joining league:", error);
-      }
-    } else {
-      console.warn("No league selected");
+    if (!selectedLeague || !userDetails) return;
+
+    try {
+      const result = await joinLeague(
+        selectedLeague.leagueId,
+        userDetails.FantasyPlayerId
+      );
+      alert("Successfully joined the league!");
+      setSelectedLeague(null);
+      // Redirect to /league/{leagueId}
+      router.push(`/league/${selectedLeague.leagueId}`);
+    } catch (error) {
+      alert("Failed to join league. Please try again.");
     }
   };
 
@@ -81,34 +74,29 @@ function CreateLeagueContent() {
   const router = useRouter();
 
   const handleCreateLeague = async () => {
-    console.log("Create League button clicked.");
-    console.log("leagueName:", leagueName);
-    console.log("userDetails:", userDetails);
+    if (!leagueName.trim()) {
+      alert("Please enter a league name");
+      return;
+    }
 
-    if (!leagueName) {
-      console.warn("League name is empty");
-      return;
-    }
     if (!userDetails) {
-      console.warn("User details not available");
+      alert("User details not available");
       return;
     }
+
     try {
-      console.log("Calling createLeague API with:", {
-        leagueName,
-        fantasyPlayerId: userDetails.FantasyPlayerId.toString(),
-        commissionerEmail: userDetails.email,
-      });
       const response = await createLeague({
-        leagueName,
+        leagueName: leagueName.trim(),
         fantasyPlayerId: userDetails.FantasyPlayerId.toString(),
         commissionerEmail: userDetails.email,
       });
-      console.log("League created successfully with id:", response.leagueId);
+
+      alert(`League created successfully! League ID: ${response.leagueId}`);
+      setLeagueName("");
       // Redirect to /league/{leagueId}
       router.push(`/league/${response.leagueId}`);
     } catch (error) {
-      console.error("Error creating league:", error);
+      alert("Failed to create league. Please try again.");
     }
   };
 
@@ -191,9 +179,6 @@ function LeaguePage() {
   const router = useRouter();
   const { userDetails } = useUserStore();
 
-  console.log("userDetails:", userDetails);
-  const leagueId = userDetails?.LeagueId;
-
   // Local state to ensure client-side rendering
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
@@ -227,7 +212,7 @@ function LeaguePage() {
     );
   }
 
-  if (leagueId) return null;
+  if (userDetails?.LeagueId) return null;
 
   return (
     <Container>

@@ -7,34 +7,29 @@ export default function Auth() {
   const router = useRouter();
 
   useEffect(() => {
-    console.log("Auth state in /auth page:", auth);
-    // Wait until loading is finished
-    if (!auth.isLoading) {
-      if (auth.isAuthenticated) {
-        console.log("User is authenticated:", auth.user);
-
-        // Check if there's a redirect URL in localStorage (set by the app when redirecting to auth)
-        const redirectUrl = localStorage.getItem("returnUrl");
-        if (redirectUrl) {
-          console.log("Redirecting to original URL:", redirectUrl);
-          localStorage.removeItem("returnUrl"); // Clean up
-          router.replace(redirectUrl);
-        } else {
-          // Default redirect to home
-          router.replace("/");
-        }
-      } else if (auth.error) {
-        console.error("Authentication error:", auth.error);
-        router.replace("/");
-      } else {
-        console.log("Authentication not completed yet.");
-      }
+    if (auth.isAuthenticated && auth.user) {
+      const redirectUrl = (router.query.redirect as string) || "/";
+      router.push(redirectUrl);
     }
-  }, [auth, router]);
+  }, [auth.isAuthenticated, auth.user, router]);
+
+  if (auth.isAuthenticated && auth.user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Welcome!</h1>
+          <p>Redirecting you...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1>Authenticating...</h1>
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center">
+        <h1 className="text-2xl font-bold mb-4">Authentication Required</h1>
+        <p>Please complete the authentication process.</p>
+      </div>
     </div>
   );
-}
+};

@@ -17,10 +17,10 @@ interface RawUserDetailsResponse {
 
 interface UserDetails {
   email: string;
-  FantasyPlayerName: string;
-  LeagueId: string;
-  TeamName: string;
-  FantasyPlayerId: number;
+  fantasyPlayerName: string; // Changed to match API response
+  leagueId: number; // Changed to match API response
+  teamName: string; // Changed to match API response
+  fantasyPlayerId: number; // Changed to match API response
 }
 
 interface UserStore {
@@ -34,38 +34,32 @@ const useUserStore = create<UserStore>((set) => ({
   userDetails: null,
   setUserDetails: (details) => set({ userDetails: details }),
   clearUserDetails: () => set({ userDetails: null }),
-  fetchUserDetails: async (email: string, leagueId?: string) => {
+  fetchUserDetails: async (email: string) => {
     try {
-      console.log("fetching user details");
-      // Cast the response to our RawUserDetailsResponse type.
-      const rawResponse = (await fetchUserDetailsAPI(
-        email,
-        leagueId
-      )) as unknown as RawUserDetailsResponse;
+      const response = await fetch(
+        "https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod/get-my-team",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        }
+      );
 
-      if (rawResponse && rawResponse.teams && rawResponse.teams.length > 0) {
-        const rawData = rawResponse.teams[0]; // get the first team
-        console.log("rawData", rawData);
+      if (response.ok) {
+        const rawData = await response.json();
 
-        // Normalize the API response into a flat structure.
-        const normalizedDetails: UserDetails = {
-          email: rawData.emailAddress,
-          FantasyPlayerName: rawData.fantasyPlayerName,
-          LeagueId: leagueId ?? rawData.leagueId ?? "",
-          TeamName: rawData.teamName,
-          FantasyPlayerId: Number(rawData.fantasyPlayerId),
-        };
-
-        set({ userDetails: normalizedDetails });
-      } else {
-        console.warn(
-          "No user details found for the given email and league ID."
-        );
-        set({ userDetails: null });
+        if (rawData.teams && rawData.teams.length > 0) {
+          const userDetails = rawData.teams[0];
+          set({ userDetails });
+          return userDetails;
+        }
       }
+
+      return null;
     } catch (error) {
-      console.error("Failed to fetch user details:", error);
-      set({ userDetails: null });
+      return null;
     }
   },
 }));

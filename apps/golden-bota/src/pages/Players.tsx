@@ -76,7 +76,7 @@ const DraftPage: React.FC = () => {
     }
 
     // Simulate drafting logic (replace with API call to draft player)
-    console.log(`Drafting player: ${player.name}`);
+
     setPlayers((prevPlayers) =>
       prevPlayers.map((p) =>
         p.id === player.id ? { ...p, draftedBy: leagueInfo.userTeam } : p

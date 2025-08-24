@@ -13,7 +13,20 @@ import {
 } from "@mui/material";
 import { KeyboardArrowDown, KeyboardArrowUp } from "@mui/icons-material";
 import { fetchGoldenBootTable } from "@mls-fantasy/api";
-import { Player, GoldenBootTableResponse } from "@mls-fantasy/api";
+import {
+  Player as BasePlayer,
+  GoldenBootTableResponse,
+} from "@mls-fantasy/api";
+
+// Extended Player interface to ensure all properties are available
+interface Player extends BasePlayer {
+  transferStatus?:
+    | "Transferred In"
+    | "Transferred Out"
+    | "Transferred In/Out"
+    | "Original";
+  totalGoalsAllTime?: number;
+}
 import Image from "next/image";
 import { useRouter } from "next/router";
 
@@ -55,7 +68,7 @@ function Row({ row }: { row: TeamWithRank }) {
               {/* Mobile-first responsive table */}
               <Box sx={{ display: { xs: "block", md: "none" } }}>
                 {/* Mobile Card Layout */}
-                {Players.map((player) => (
+                {Players.map((player: Player) => (
                   <Box
                     key={player.id}
                     sx={{
@@ -153,7 +166,7 @@ function Row({ row }: { row: TeamWithRank }) {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {Players.map((player) => (
+                    {Players.map((player: Player) => (
                       <TableRow key={player.id}>
                         <TableCell component="th" scope="row">
                           {player.name}

@@ -95,90 +95,60 @@ export const dropPlayer = async (
   leagueId: string,
   playerId: string,
   teamId: string
-): Promise<any> => {
+) => {
   try {
     const payload = {
       player_id: playerId,
       team_id: teamId,
     };
-    console.log("🚀 Calling dropPlayer API:", {
-      url: `${BASE_URL}/league/${leagueId}/transfer/drop`,
-      payload,
-    });
     const response = await axios.post(
       `${BASE_URL}/league/${leagueId}/transfer/drop`,
       payload
     );
-    console.log("✅ dropPlayer response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error dropping player:", error);
     if (axios.isAxiosError(error)) {
-      console.error("API Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-      });
+      throw error;
     }
-    throw error;
+    throw new Error("Failed to drop player");
   }
 };
 
 export const pickupPlayer = async (
   leagueId: string,
   playerId: string,
-  teamId: string
-): Promise<any> => {
+  teamId: string,
+  droppedPlayerId: string
+) => {
   try {
     const payload = {
       player_id: playerId,
       team_id: teamId,
+      dropped_player_id: droppedPlayerId,
     };
-    console.log("🚀 Calling pickupPlayer API:", {
-      url: `${BASE_URL}/league/${leagueId}/transfer/pickup`,
-      payload,
-    });
     const response = await axios.post(
       `${BASE_URL}/league/${leagueId}/transfer/pickup`,
       payload
     );
-    console.log("✅ pickupPlayer response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error picking up player:", error);
     if (axios.isAxiosError(error)) {
-      console.error("API Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-      });
+      throw error;
     }
-    throw error;
+    throw new Error("Failed to pick up player");
   }
 };
 
-export const advanceTransferTurn = async (leagueId: string): Promise<any> => {
+export const advanceTransferTurn = async (leagueId: string) => {
   try {
-    console.log("🚀 Calling advanceTransferTurn API:", {
-      url: `${BASE_URL}/league/${leagueId}/transfer/advance`,
-    });
     const response = await axios.post(
-      `${BASE_URL}/league/${leagueId}/transfer/advance`
+      `${BASE_URL}/league/${leagueId}/transfer/advance-turn`
     );
-    console.log("✅ advanceTransferTurn response:", response.data);
     return response.data;
   } catch (error) {
-    console.error("❌ Error advancing transfer turn:", error);
     if (axios.isAxiosError(error)) {
-      console.error("API Error details:", {
-        status: error.response?.status,
-        statusText: error.response?.statusText,
-        data: error.response?.data,
-        headers: error.response?.headers,
-      });
+      throw error;
     }
-    throw error;
+    throw new Error("Failed to advance transfer turn");
   }
 };

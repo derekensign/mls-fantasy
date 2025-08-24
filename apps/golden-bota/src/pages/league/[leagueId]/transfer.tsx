@@ -48,7 +48,6 @@ const TransferWindowPage: React.FC = () => {
 
   // Reset local transfer state when league changes or component mounts
   useEffect(() => {
-    console.log("🔄 Resetting local transfer state for league:", leagueId);
     setLocalTransferState({ step: "drop" });
     setIsDropping(false);
     setIsPickingUp(false);
@@ -71,20 +70,12 @@ const TransferWindowPage: React.FC = () => {
     if (transferInfo?.currentTurn && actualUserFantasyPlayerId) {
       const isUserTurn = transferInfo.currentTurn === actualUserFantasyPlayerId;
       if (isUserTurn) {
-        console.log(
-          "🔄 User's turn detected - resetting transfer state to 'drop'"
-        );
         setLocalTransferState({ step: "drop" });
         setIsDropping(false);
         setIsPickingUp(false);
       }
     }
   }, [transferInfo?.currentTurn, actualUserFantasyPlayerId]);
-
-  // Debug user details
-  console.log("🔍 Current userDetails from store:", userDetails);
-  console.log("🔍 Extracted FantasyPlayerId:", actualUserFantasyPlayerId);
-  console.log("🔍 League ID:", leagueId);
 
   // Use local state since old API doesn't return activeTransfers
   const transferStep = localTransferState.step;
@@ -96,62 +87,21 @@ const TransferWindowPage: React.FC = () => {
 
     try {
       // Always fetch transfer window info first (regardless of user status)
-      console.log(
-        "🚀 About to call API.getTransferWindowInfo for league:",
-        leagueId
-      );
       const transferData = await API.getTransferWindowInfo(String(leagueId));
-      console.log("✅ Transfer window API response:", transferData);
-      console.log("🔍 Setting transferInfo to:", transferData.transferWindow);
-      console.log(
-        "🔍 Transfer window status:",
-        transferData.transferWindow?.status
-      );
-      console.log(
-        "🔍 DEBUG: Raw transferActions from API:",
-        transferData.transferWindow?.transferActions
-      );
-      console.log(
-        "🔍 DEBUG: transferActions type:",
-        typeof transferData.transferWindow?.transferActions
-      );
-      console.log(
-        "🔍 DEBUG: transferActions length:",
-        transferData.transferWindow?.transferActions?.length
-      );
-      if (transferData.transferWindow?.transferActions?.length > 0) {
-        console.log(
-          "🔍 DEBUG: First transfer action:",
-          transferData.transferWindow.transferActions[0]
-        );
-        console.log(
-          "🔍 DEBUG: All transfer actions:",
-          JSON.stringify(transferData.transferWindow.transferActions, null, 2)
-        );
-      }
       setTransferInfo(transferData.transferWindow);
 
-      // Don't load player data if we don't have user details yet
-      if (!actualUserFantasyPlayerId) {
-        console.log("No user fantasy player ID - skipping player data load");
-        return;
-      }
+      // Always fetch drafted players data for the UI
+      // (User-specific logic will be handled later)
 
       // Fetch fantasy players data for team names and user info
       const fantasyData = await API.fetchFantasyPlayersByLeague(
         String(leagueId)
       );
-      console.log("Fantasy players loaded:", fantasyData.length, "teams");
       setFantasyPlayers(fantasyData);
 
       // Fetch drafted players from League_{league_id} table (the correct ownership source)
       const draftedPlayersData = await API.fetchDraftedPlayers(
         String(leagueId)
-      );
-      console.log(
-        "Drafted players from League table:",
-        draftedPlayersData.length,
-        "records"
       );
       setDraftedPlayersFromLeague(draftedPlayersData);
 
@@ -229,11 +179,6 @@ const TransferWindowPage: React.FC = () => {
             pickedUpAt: dp.picked_up_at || null,
           }));
 
-        console.log(
-          "User owned player IDs from League table:",
-          userOwnedPlayerIds
-        );
-
         // Cross-reference with availablePlayers to get full player data (names, goals, etc.)
         const userCurrentPlayers = availablePlayers
           .map((player) => {
@@ -259,19 +204,7 @@ const TransferWindowPage: React.FC = () => {
           })
           .filter(Boolean);
 
-        console.log("User current players with full data:", userCurrentPlayers);
-        console.log(
-          "Setting userTeamPlayers to:",
-          userCurrentPlayers.length,
-          "players"
-        );
         setUserTeamPlayers(userCurrentPlayers);
-
-        // Log dropped players for debugging, but don't automatically change local state
-        const droppedPlayers = userOwnedPlayerIds.filter(
-          (op: any) => op.isDropped
-        );
-        console.log("🔍 Found dropped players in database:", droppedPlayers);
 
         // Only auto-set pickup mode if user has more drops than pickups (incomplete transfer)
         // Count actual transfer actions for this user from the transfer history
@@ -290,19 +223,12 @@ const TransferWindowPage: React.FC = () => {
 
         const hasUncompletedDrop = userDrops > userPickups;
 
-        console.log(
-          `🔍 Transfer count check: ${userDrops} drops, ${userPickups} pickups, hasUncompletedDrop: ${hasUncompletedDrop}`
-        );
-
         if (
           hasUncompletedDrop &&
           transferInfo?.currentTurn === actualUserFantasyPlayerId &&
           localTransferState.step === "drop" &&
           !localTransferState.droppedPlayerId
         ) {
-          console.log(
-            `🔍 Initial load: User has incomplete transfer (${userDrops} drops, ${userPickups} pickups), entering pickup mode`
-          );
           // Find the most recent dropped player to set as the selected drop
           const lastDropAction = transferActions
             .filter(
@@ -320,20 +246,10 @@ const TransferWindowPage: React.FC = () => {
             step: "pickup",
             droppedPlayerId: lastDropAction?.player_id || undefined,
           });
-        } else {
-          console.log(
-            `🔍 No incomplete transfer found (${userDrops} drops, ${userPickups} pickups) - staying in drop mode`
-          );
         }
-      } else {
-        console.log(
-          "No userFantasyPlayerId found - keeping current team state"
-        );
-        // Don't reset the team if we temporarily lose user ID
-        // setUserTeamPlayers([]);
       }
     } catch (error) {
-      console.error("Error loading transfer data:", error);
+      // Handle error silently
     } finally {
       setLoading(false);
     }
@@ -352,30 +268,22 @@ const TransferWindowPage: React.FC = () => {
 
       if (auth.isAuthenticated && auth.user?.profile?.email) {
         try {
-          console.log("🔄 Loading user details for league:", leagueId);
-          // Normal user lookup for this specific league
           const userInfo = await API.fetchUserDetails(
             auth.user.profile.email,
             String(leagueId)
           );
           if (userInfo && userInfo.length > 0) {
-            console.log("🔍 Raw user details from API:", userInfo[0]);
-            console.log(
-              "🔍 FantasyPlayerId from user details:",
-              userInfo[0]?.FantasyPlayerId
-            );
             setLocalUserDetails(userInfo[0]); // Store in local state
             setUserDetails(userInfo[0]); // Also update store
             setUserDataLoaded(true);
           } else {
             // No user details found for this league - user might not be in this league
-            console.log("❌ No user found in this league");
             setLocalUserDetails(null);
             setUserDataLoaded(true);
             setLoading(false);
           }
         } catch (error) {
-          console.error("Error loading user details:", error);
+          // Handle error silently
           setUserDataLoaded(true);
           setLoading(false); // Stop loading on error
         }
@@ -388,12 +296,6 @@ const TransferWindowPage: React.FC = () => {
   // Load transfer data when we have leagueId AND user data is loaded
   useEffect(() => {
     if (leagueId && userDataLoaded) {
-      console.log(
-        "🔥 UseEffect triggered - calling loadTransferData for league:",
-        leagueId,
-        "with user ID:",
-        actualUserFantasyPlayerId
-      );
       setLoading(true); // Set loading to true when starting to load data
       loadTransferData();
     }
@@ -405,17 +307,12 @@ const TransferWindowPage: React.FC = () => {
 
     const interval = setInterval(async () => {
       const prevCurrentTurn = transferInfo?.currentTurn;
-      console.log("🔄 Polling for transfer window updates...", {
-        prevTurn: prevCurrentTurn,
-        myTeam: actualUserFantasyPlayerId,
-      });
-
       try {
         await loadTransferData();
         // The state update happens after this, so we can't compare here
         // But the loadTransferData will trigger a re-render with new data
       } catch (error) {
-        console.error("Error during polling:", error);
+        // Handle error silently
       }
     }, 3000); // Poll every 3 seconds for more responsive updates
 
@@ -432,7 +329,6 @@ const TransferWindowPage: React.FC = () => {
   useEffect(() => {
     const timeout = setTimeout(() => {
       if (loading && leagueId && auth.isAuthenticated && userDataLoaded) {
-        console.log("Loading timeout reached, stopping loading state");
         setLoading(false);
       }
     }, 10000); // 10 second timeout
@@ -448,21 +344,14 @@ const TransferWindowPage: React.FC = () => {
 
     // Double-check it's the user's turn before attempting drop
     if (transferInfo.currentTurn !== actualUserFantasyPlayerId) {
-      console.warn("🚫 Not user's turn - refreshing data first");
       await loadTransferData(); // Refresh to get latest turn info
 
       // Get fresh transfer info after the refresh
-      console.log("🔍 Checking turn after refresh...");
-      // Wait a bit for state to update, then check again with a fresh API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       try {
         const freshTransferData = await API.getTransferWindowInfo(
           String(leagueId)
-        );
-        console.log(
-          "🔍 Fresh transfer data:",
-          freshTransferData.transferWindow
         );
 
         if (
@@ -476,7 +365,7 @@ const TransferWindowPage: React.FC = () => {
           return;
         }
       } catch (error) {
-        console.error("Error checking fresh turn data:", error);
+        // Handle error silently
         alert("Unable to verify turn status. Please try again.");
         setIsDropping(false);
         return;
@@ -484,21 +373,11 @@ const TransferWindowPage: React.FC = () => {
     }
 
     try {
-      console.log(
-        "🎯 Dropping player:",
-        playerId,
-        "for team:",
-        actualUserFantasyPlayerId,
-        "current turn:",
-        transferInfo.currentTurn
-      );
-
       const dropResult = await API.dropPlayer(
         String(leagueId),
         playerId,
         actualUserFantasyPlayerId
       );
-      console.log("🎯 Drop result:", dropResult);
 
       // Update local state to pickup mode
       setLocalTransferState({
@@ -506,14 +385,9 @@ const TransferWindowPage: React.FC = () => {
         droppedPlayerId: playerId,
       });
 
-      console.log("🎯 Refreshing transfer data after drop...");
-      // Add a small delay to ensure backend DB is updated
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       await loadTransferData(); // Refresh data
-      console.log("🎯 Transfer data refreshed after drop");
     } catch (error: any) {
-      console.error("Error dropping player:", error);
-      // Check if it's a turn validation error
+      // Handle error
       if (error?.response?.status === 403 || error?.response?.status === 409) {
         alert(
           "It's not your turn or this action is not allowed. Refreshing data..."
@@ -545,21 +419,14 @@ const TransferWindowPage: React.FC = () => {
       transferInfo.currentTurn !== actualUserFantasyPlayerId &&
       transferStep !== "pickup"
     ) {
-      console.warn("🚫 Not user's turn for pickup - refreshing data first");
       await loadTransferData();
 
       // Get fresh transfer info after the refresh
-      console.log("🔍 Checking turn after refresh for pickup...");
-      // Wait a bit for state to update, then check again with a fresh API call
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       try {
         const freshTransferData = await API.getTransferWindowInfo(
           String(leagueId)
-        );
-        console.log(
-          "🔍 Fresh transfer data for pickup:",
-          freshTransferData.transferWindow
         );
 
         if (
@@ -573,38 +440,24 @@ const TransferWindowPage: React.FC = () => {
           return;
         }
       } catch (error) {
-        console.error("Error checking fresh turn data for pickup:", error);
+        // Handle error silently
         alert("Unable to verify turn status. Please try again.");
         setIsPickingUp(false);
         return;
       }
     } else if (transferStep === "pickup") {
-      console.log(
-        "🔄 User is already in pickup mode, allowing pickup without strict turn check"
-      );
+      // No strict turn check needed for pickup in this mode
     }
 
     try {
-      console.log(
-        "🎯 Picking up player:",
-        player.id,
-        "for team:",
-        actualUserFantasyPlayerId,
-        "current turn:",
-        transferInfo.currentTurn
-      );
-
-      // Only pick up now; drop already happened earlier
       await API.pickupPlayer(
         String(leagueId),
         String(player.id),
         actualUserFantasyPlayerId
       );
 
-      console.log("🎯 Advancing turn after pickup...");
       // Advance the turn after successful pickup
       const advanceResult = await API.advanceTransferTurn(String(leagueId));
-      console.log("🎯 Advance turn result:", advanceResult);
 
       // Check if transfer window completed
       if (advanceResult?.completed) {
@@ -617,13 +470,9 @@ const TransferWindowPage: React.FC = () => {
       // Reset local state back to drop mode
       setLocalTransferState({ step: "drop" });
 
-      console.log("🎯 Refreshing data after pickup and advance...");
       await loadTransferData(); // Refresh data
     } catch (error: any) {
-      console.error("Error picking up player:", error);
-
-      // Always refresh data when there's any pickup error to ensure UI shows current state
-      console.log("🔄 Refreshing data after pickup error...");
+      // Handle error
       await loadTransferData();
 
       // Check for specific error types
@@ -636,15 +485,10 @@ const TransferWindowPage: React.FC = () => {
         );
       } else if (error?.response?.status === 409) {
         // Conditional check failed - player not available or race condition
-        console.log("🔄 Race condition detected, forcing data refresh...");
-        // Add a longer delay for race conditions and refresh again
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-        await loadTransferData();
         alert(
           "Player pickup failed due to a race condition. The page has been refreshed with the latest data. Please try again."
         );
       } else {
-        // Other errors
         alert(
           "Failed to pick up player. Please try again. The page has been refreshed."
         );
@@ -660,7 +504,6 @@ const TransferWindowPage: React.FC = () => {
 
     try {
       const advanceResult = await API.advanceTransferTurn(String(leagueId));
-      console.log("🎯 Skip turn advance result:", advanceResult);
 
       // Check if transfer window completed
       if (advanceResult?.completed) {
@@ -672,12 +515,10 @@ const TransferWindowPage: React.FC = () => {
         return;
       }
 
-      // setSelectedDropPlayer(null); // Removed - now tracked in database
-      // setTransferStep("drop"); // This line is removed as transferStep is now derived
       await loadTransferData(); // Refresh data
       alert("Turn skipped successfully!");
     } catch (error) {
-      console.error("Error skipping turn:", error);
+      // Handle error
       alert("Failed to skip turn. Please try again.");
     }
   };
@@ -698,13 +539,12 @@ const TransferWindowPage: React.FC = () => {
         String(leagueId),
         String(actualUserFantasyPlayerId)
       );
-      console.log("🎯 Done transferring result:", result);
 
       // Reload transfer data to reflect the change
       await loadTransferData();
       alert("You are now done transferring for this window!");
     } catch (error) {
-      console.error("Error marking done transferring:", error);
+      // Handle error
       alert("Failed to complete action. Please try again.");
     }
   };
@@ -1150,17 +990,6 @@ const TransferWindowPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Available Players */}
         <div className="lg:col-span-2">
-          {(() => {
-            console.log("Transfer mode props:", {
-              mode: "transfer",
-              isUserTurn: isUserTurn && transferStep === "pickup",
-              transferStep,
-              fantasyPlayersCount: fantasyPlayers.length,
-              rawIsUserTurn: isUserTurn,
-              selectedDropPlayer: selectedDropPlayerFromDB,
-            });
-            return null;
-          })()}
           <DraftAvailablePlayersTable
             players={players}
             draftedPlayers={[]} // For transfer window, we show all available players
@@ -1193,43 +1022,18 @@ const TransferWindowPage: React.FC = () => {
               Transfer Actions
             </Typography>
             <Box>
-              {(() => {
-                console.log(
-                  "🔍 DEBUG: transferInfo.transferActions:",
-                  transferInfo.transferActions
-                );
-                console.log(
-                  "🔍 DEBUG: transferActions length:",
-                  transferInfo.transferActions?.length
-                );
-                console.log("🔍 DEBUG: fantasyPlayers:", fantasyPlayers);
-                return null;
-              })()}
               {transferInfo.transferActions
                 ?.filter((action) => {
                   // Filter out "turn_advanced" actions - only show actual player transfers
                   const isPlayerTransfer =
                     action.action_type === "drop" ||
                     action.action_type === "pickup";
-                  console.log(
-                    `🔍 DEBUG: Action ${action.action_type} - isPlayerTransfer: ${isPlayerTransfer}`
-                  );
                   return isPlayerTransfer;
                 })
                 ?.map((action, index) => {
-                  console.log(`🔍 DEBUG: Processing action ${index}:`, action);
                   const team = fantasyPlayers.find(
                     (fp) =>
                       fp.FantasyPlayerId.toString() === action.fantasy_team_id
-                  );
-                  console.log(
-                    `🔍 DEBUG: Found team for action ${index}:`,
-                    team
-                  );
-                  console.log(`🔍 DEBUG: Action date raw:`, action.action_date);
-                  console.log(
-                    `🔍 DEBUG: Action date parsed:`,
-                    new Date(action.action_date)
                   );
                   return (
                     <Box
@@ -1289,7 +1093,7 @@ const TransferWindowPage: React.FC = () => {
         fantasyPlayers={fantasyPlayers}
         draftedPlayers={[]} // We'll show transfer actions instead
         mode="transfer"
-        transferActions={transferInfo.transferActions}
+        transferActions={transferInfo?.transferActions}
       />
     </Container>
   );

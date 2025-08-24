@@ -62,7 +62,6 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       const loadFantasyPlayers = async () => {
         try {
           const data = await fetchFantasyPlayersByLeague(String(leagueId));
-          console.log("fantasy players", data);
           setFantasyPlayers(data);
         } catch (error) {
           console.error("Error fetching fantasy players:", error);
@@ -237,13 +236,6 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       : draftInfo.draftOrder;
     const nextTeam = order[indexInRound];
 
-    console.log("New Overall Pick:", newOverallPick);
-    console.log("New Round:", newRound);
-    console.log("Index In Round:", indexInRound);
-    console.log("Snake order:", order);
-    console.log("Next team computed:", nextTeam);
-
-    // Update all properties in the database.
     await updateDraftSettings(String(leagueId), {
       overall_pick: newOverallPick,
       current_round: newRound,

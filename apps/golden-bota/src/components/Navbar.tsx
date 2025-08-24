@@ -35,8 +35,8 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
   // If the user is authenticated and has a LeagueId, link to /league/[LeagueId]/draft
   // Otherwise, link to the join/create page at /league
   const leagueLink =
-    auth.isAuthenticated && userDetails?.LeagueId
-      ? `/league/${userDetails.LeagueId}`
+    auth.isAuthenticated && userDetails?.leagueId
+      ? `/league/${userDetails.leagueId}`
       : "/league";
 
   const toggleMenu = () => {
@@ -95,14 +95,14 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
                 My Team
               </Link>
               <Link
-                href={`/league/${userDetails.LeagueId}/table`}
+                href={`/league/${userDetails.leagueId}/table`}
                 className="text-white hover:text-gray-300"
               >
                 Table
               </Link>
               {isTransferWindowActive && (
                 <Link
-                  href={`/league/${userDetails.LeagueId}/transfer`}
+                  href={`/league/${userDetails.leagueId}/transfer`}
                   className="text-white hover:text-gray-300"
                 >
                   Transfer
@@ -135,7 +135,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
                 My Team
               </Link>
               <Link
-                href={`/league/${userDetails.LeagueId}/table`}
+                href={`/league/${userDetails.leagueId}/table`}
                 className="text-white hover:text-gray-300 text-lg py-1 w-full"
                 onClick={() => setIsOpen(false)}
               >
@@ -143,7 +143,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
               </Link>
               {isTransferWindowActive && (
                 <Link
-                  href={`/league/${userDetails.LeagueId}/transfer`}
+                  href={`/league/${userDetails.leagueId}/transfer`}
                   className="text-white hover:text-gray-300 text-lg py-1 w-full"
                   onClick={() => setIsOpen(false)}
                 >
@@ -160,7 +160,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
             <>
               <div className="flex items-center space-x-2 sm:space-x-4">
                 <span className="font-semibold text-sm sm:hidden lg:block">
-                  Hi, {userDetails?.FantasyPlayerName.split(" ")[0] || "User"}!
+                  Hi, {userDetails?.fantasyPlayerName?.split(" ")[0] || "User"}!
                 </span>
                 <button
                   onClick={handleLogout}
