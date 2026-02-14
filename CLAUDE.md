@@ -23,8 +23,10 @@ npm run watch     # Watch mode for development
 ## AWS Access
 
 ```bash
-# Use the mls-fantasy profile for AWS CLI commands
-aws --profile mls-fantasy <command>
+# AWS credentials are in .env.local
+# Must unset work AWS env vars first when running CLI commands:
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE AWS_DEFAULT_PROFILE
+source .env.local  # or export manually
 
 # Account: 853443719819
 # Region: us-east-1
@@ -95,14 +97,14 @@ User → Next.js App → @mls-fantasy/api → API Gateway (HTTP API) → Lambda 
 |-------|---------|
 | `Draft` | Draft session and transfer window state |
 | `Fantasy_Players` | User teams, profiles, and rosters |
-| `Players_2025` | MLS player database for current season |
+| `Players_2026` | MLS player database for current season |
 | `League_{leagueId}` | Per-league player assignments (dynamic table per league) |
 
 ### DynamoDB Tables (Legacy/Other)
 
 | Table | Purpose |
 |-------|---------|
-| `Players_2024`, `Player_2023` | Historical player data |
+| `Players_2025`, `Players_2024`, `Player_2023` | Historical player data |
 | `Golden_Boot_Players` | Legacy standings table |
 | `League_Settings` | League configuration |
 | `Copa_Tejas_Table` | Separate copa-tejas app data |
@@ -125,6 +127,9 @@ The transfer window is the most complex part of the system:
 ### Authentication
 - AWS Cognito Hosted UI handles OAuth flows
 - Tokens stored in localStorage, auto-refresh 60s before expiry
+- **Cognito User Pool**: `us-east-1_D6OPuwWML`
+- **App Client ID**: `7b2ljliksvl2pn7gadjrn90e1a`
+- **Session duration**: Refresh token set to 30 days (updated Feb 2026)
 
 ## Notes
 
