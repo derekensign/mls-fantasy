@@ -13,19 +13,15 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
 
   const handleLogin = () => auth.signinRedirect();
   const handleLogout = () => {
-    const clientId = "7b2ljliksvl2pn7gadjrn90e1a"; // Your Cognito App Client ID
-    const logoutUri = "http://localhost:3000?logout=true"; // Your post-logout redirect URI
-    const cognitoDomain =
-      "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com";
+    const clientId = "7b2ljliksvl2pn7gadjrn90e1a";
+    const logoutUri = window.location.origin;
+    const cognitoDomain = "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com";
 
-    // Construct the Cognito logout URL
     const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(
       logoutUri
     )}`;
 
     auth.removeUser();
-
-    // Redirect the user to the Cognito logout endpoint
     window.location.href = logoutUrl;
   };
 
