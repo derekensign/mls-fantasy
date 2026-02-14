@@ -22,6 +22,8 @@ export interface DraftInfo {
   transfer_snake_order?: boolean;
   transferOrder?: string[];
   transfer_window_status?: string;
+  // 2025 standings for draft order display
+  goals2025?: { [fantasyPlayerId: string]: number };
 }
 
 export interface GoldenBootTableResponse {
@@ -35,7 +37,8 @@ export interface Player {
   id: string;
   name: string;
   team: string;
-  goals_2025: number;
+  goals_2026: number;
+  goals_2025?: number; // Historical - optional
   // Transfer status fields
   transferStatus?:
     | "Transferred In"
@@ -229,6 +232,8 @@ export const getDraftSettings = async (
       ? data.transferOrder.map((item: any) => (item.S ? item.S : item))
       : [],
     transfer_window_status: data.transfer_window_status || "",
+    // 2025 standings for draft order display
+    goals2025: data.goals2025 || {},
   };
 
   return draftInfo;
@@ -303,7 +308,7 @@ export const updateDraftSettings = async (
 ): Promise<DraftInfo | null> => {
   try {
     const response: AxiosResponse<DraftInfo> = await axios.post(
-      `${BASE_URL}/draft/${leagueId}/data`,
+      `${BASE_URL}/league/${leagueId}/draft-settings`,
       settings
     );
     return response.data;

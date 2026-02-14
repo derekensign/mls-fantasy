@@ -57,9 +57,9 @@ export const handler = async (event) => {
       };
     }
 
-    // Get player details from Players_2025
+    // Get player details from Players_2026
     const playersCommand = new AWS.ScanCommand({
-      TableName: "Players_2025",
+      TableName: "Players_2026",
     });
     const playersResponse = await docClient.send(playersCommand);
     console.log(
@@ -74,7 +74,7 @@ export const handler = async (event) => {
         {
           name: player.name,
           team: player.team,
-          goals_2025: player.goals_2025 || 0,
+          goals_2026: player.goals_2026 || 0,
         },
       ])
     );
@@ -110,7 +110,7 @@ export const handler = async (event) => {
     ) => {
       const playerId = draftedPlayer.player_id;
       const playerName = playerDetails?.name || `Player ${playerId}`;
-      const totalGoals = playerDetails?.goals_2025 || 0;
+      const totalGoals = playerDetails?.goals_2026 || 0;
 
       // Check if player was transferred
       const wasDropped = draftedPlayer.dropped === true;
@@ -168,7 +168,7 @@ export const handler = async (event) => {
         id: playerId,
         name: playerName,
         team: playerDetails?.team,
-        goals_2025: calculatedGoals, // Use calculated goals that account for transfers
+        goals_2026: calculatedGoals, // Use calculated goals that account for transfers
         transferStatus: transferStatus,
         joinedDate: joinedDate,
         leftDate: leftDate,
@@ -190,7 +190,7 @@ export const handler = async (event) => {
 
       // Calculate total goals for this fantasy team (using transfer-adjusted goals)
       const calculatedTotalGoals = draftedPlayers.reduce(
-        (total, player) => total + (Number(player.goals_2025) || 0),
+        (total, player) => total + (Number(player.goals_2026) || 0),
         0
       );
 

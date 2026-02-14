@@ -9,6 +9,11 @@ import {
   Paper,
   Button,
   TableSortLabel,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
+  Chip,
 } from "@mui/material";
 import {
   Player,
@@ -42,6 +47,7 @@ interface DraftAvailablePlayersTableProps {
     isOwnedByUser: boolean;
   }; // Add getPlayerOwnership prop
   isPickingUp?: boolean; // Add loading state for pickup button
+  testMode?: boolean; // Test mode: allows drafting as any team
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -58,13 +64,28 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   transferStatus, // Add transfer status prop
   getPlayerOwnership, // Add getPlayerOwnership prop
   isPickingUp = false, // Default to false
+  testMode = false, // Default to false
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [teamFilter, setTeamFilter] = useState<string>("all");
+  const [showNewOnly, setShowNewOnly] = useState<boolean>(false);
+  const [showNewToTeamOnly, setShowNewToTeamOnly] = useState<boolean>(false);
 
-  // Filter players based on search term first
-  const filteredPlayers = players.filter((player) =>
-    player.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Get unique teams for filter dropdown
+  const uniqueTeams = useMemo(() => {
+    const teams = new Set(players.map((p) => p.team).filter(Boolean));
+    return Array.from(teams).sort();
+  }, [players]);
+
+  // Filter players based on search term, team, and new status
+  const filteredPlayers = players.filter((player) => {
+    const playerName = typeof player.name === 'string' ? player.name : String(player.name || '');
+    const matchesSearch = playerName.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesTeam = teamFilter === "all" || player.team === teamFilter;
+    const matchesNew = !showNewOnly || player.isNew;
+    const matchesNewToTeam = !showNewToTeamOnly || player.isNewToTeam;
+    return matchesSearch && matchesTeam && matchesNew && matchesNewToTeam;
+  });
 
   // Then filter out any player whose id appears in draftedPlayers.
   const availablePlayers = filteredPlayers.filter(
@@ -117,6 +138,10 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   };
 
   const isDraftDisabled = (player: Player) => {
+    // In test mode, never disable the draft button
+    if (testMode) {
+      return false;
+    }
     if (mode === "transfer") {
       // In transfer mode, disable if it's not the user's turn
       return !isUserTurn;
@@ -168,6 +193,11 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   };
 
   const isActionButtonDisabled = (player: Player) => {
+    // In test mode (draft), never disable the button
+    if (testMode && mode === "draft") {
+      return false;
+    }
+
     // Always disable if transfer window is completed
     if (mode === "transfer" && transferStatus === "completed") {
       return true;
@@ -324,8 +354,14 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             key={player.id}
             className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm items-center"
           >
-            <div className="flex items-center justify-center">
+            <div className="flex items-center justify-center gap-1 flex-wrap">
               {player.name}
+              {player.isNew && (
+                <Chip label="New" size="small" color="success" sx={{ fontSize: '0.6rem', height: '18px' }} />
+              )}
+              {player.isNewToTeam && (
+                <Chip label="New to Team" size="small" color="info" sx={{ fontSize: '0.55rem', height: '18px' }} />
+              )}
             </div>
             <div className="flex items-center justify-center">
               {player.team}
@@ -415,7 +451,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                   }
                   onClick={() => handleSort("goals_2024")}
                 >
-                  Goals (2024)
+                  Goals (2025)
                 </TableSortLabel>
               </TableCell>
               <TableCell
@@ -446,7 +482,17 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                   key={player.id}
                   className="transition duration-300 ease-in-out hover:bg-[#FFD700] hover:bg-opacity-70"
                 >
-                  <TableCell>{player.name}</TableCell>
+                  <TableCell>
+                    <span className="flex items-center gap-2 flex-wrap">
+                      {player.name}
+                      {player.isNew && (
+                        <Chip label="New" size="small" color="success" sx={{ fontSize: '0.65rem', height: '20px' }} />
+                      )}
+                      {player.isNewToTeam && (
+                        <Chip label="New to Team" size="small" color="info" sx={{ fontSize: '0.6rem', height: '20px' }} />
+                      )}
+                    </span>
+                  </TableCell>
                   <TableCell>{player.team}</TableCell>
                   <TableCell>{formatGoals(player.goals_2024)}</TableCell>
                   <TableCell
@@ -503,16 +549,50 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
 
   return (
     <div className="w-full">
-      <div className="mb-4">
+      <div className="mb-4 flex flex-wrap gap-4 items-center">
         <input
           type="text"
           placeholder="Search players"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="mb-4 p-2 border border-gray-300 rounded w-full max-w-md"
+          className="p-2 border border-gray-300 rounded w-full max-w-xs"
         />
+        <FormControl size="small" sx={{ minWidth: 200 }}>
+          <Select
+            value={teamFilter}
+            onChange={(e) => setTeamFilter(e.target.value)}
+            sx={{ bgcolor: "white" }}
+            displayEmpty
+          >
+            <MenuItem value="all">All Teams</MenuItem>
+            {uniqueTeams.map((team) => (
+              <MenuItem key={team} value={team}>
+                {team}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showNewOnly}
+              onChange={(e) => setShowNewOnly(e.target.checked)}
+              className="w-4 h-4"
+            />
+            New to MLS
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={showNewToTeamOnly}
+              onChange={(e) => setShowNewToTeamOnly(e.target.checked)}
+              className="w-4 h-4"
+            />
+            New to Team
+          </label>
+        </div>
       </div>
-      <p>Countdown: {countdown}</p>
       {renderMobileView(sortedPlayers)}
       {renderDesktopView(sortedPlayers)}
     </div>

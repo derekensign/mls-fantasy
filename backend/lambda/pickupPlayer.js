@@ -38,12 +38,12 @@ exports.handler = async (event) => {
 
     const pickupDate = new Date().toISOString();
 
-    // Get current player info from Players_2025 table before pickup
+    // Get current player info from Players_2026 table before pickup
     let currentGoals = 0;
     let playerName = `Player ${player_id}`;
     try {
       const playerInfoParams = {
-        TableName: "Players_2025",
+        TableName: "Players_2026",
         Key: { id: player_id }, // Keep as string to match DynamoDB
       };
 
@@ -51,14 +51,14 @@ exports.handler = async (event) => {
         new GetCommand(playerInfoParams)
       );
       if (playerResult.Item) {
-        currentGoals = playerResult.Item.goals_2025 || 0;
+        currentGoals = playerResult.Item.goals_2026 || 0;
         playerName = playerResult.Item.name || `Player ${player_id}`;
         console.log(
           `📊 Player ${playerName} has ${currentGoals} goals at time of pickup`
         );
       } else {
         console.log(
-          `⚠️ Player ${player_id} not found in Players_2025 - using defaults`
+          `⚠️ Player ${player_id} not found in Players_2026 - using defaults`
         );
       }
     } catch (playerError) {
@@ -145,7 +145,7 @@ exports.handler = async (event) => {
         TableName: `League_${league_id}`,
         Item: {
           player_id: player_id,
-          player_name: playerName, // Store player name from Players_2025
+          player_name: playerName, // Store player name from Players_2026
           team_drafted_by: team_id,
           picked_up: true,
           picked_up_at: pickupDate,

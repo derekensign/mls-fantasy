@@ -13,6 +13,7 @@ import {
   fetchDraftedPlayers,
   updateDraftSettings,
   getDraftSettings,
+  getLeagueSettings,
 } from "@mls-fantasy/api";
 import useUserStore from "../../../stores/useUserStore";
 import {
@@ -49,9 +50,26 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
   const [drafting, setDrafting] = useState<boolean>(false);
   const [draftedPlayers, setDraftedPlayers] = useState<DraftedPlayer[]>([]);
   const [draftOver, setDraftOver] = useState<boolean>(false);
+  const [testMode, setTestMode] = useState<boolean>(false); // Test mode: allows drafting as any team
+  const [leagueSettings, setLeagueSettings] = useState<any>(null);
+  const [resetting, setResetting] = useState<boolean>(false);
   const { userDetails } = useUserStore();
   const userFantasyPlayerId = userDetails?.fantasyPlayerId?.toString();
-  const userIsAdmin = true; // TODO: Add this to the user details.
+
+  // Helper to extract value from DynamoDB format
+  const extractValue = (val: any): string => {
+    if (!val) return "";
+    if (typeof val === "string") return val;
+    if (val.S) return val.S;
+    if (val.M?.email?.S) return val.M.email.S;
+    return "";
+  };
+
+  // Check if user is commissioner
+  const userIsCommissioner = useMemo(() => {
+    const commissionerEmail = extractValue(leagueSettings?.commissioner);
+    return userDetails?.email === commissionerEmail;
+  }, [leagueSettings, userDetails]);
 
   // This ref will ensure that we run initialization only once.
   const initializedRef = useRef(false);
@@ -73,26 +91,53 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     }
   }, [leagueId]);
 
+  // Load league settings (for commissioner check)
+  useEffect(() => {
+    if (leagueId) {
+      const loadLeagueSettings = async () => {
+        try {
+          const settings = await getLeagueSettings(String(leagueId));
+          setLeagueSettings(settings);
+        } catch (error) {
+          console.error("Error fetching league settings:", error);
+        }
+      };
+      loadLeagueSettings();
+    }
+  }, [leagueId]);
+
   // Keep a ref to always have the latest players (for auto-pick)
   const playersRef = useRef<Player[]>([]);
   useEffect(() => {
     playersRef.current = players;
   }, [players]);
 
+  // Track if initial load is complete
+  const initialLoadDone = useRef(false);
+
   // Wrap your loadDraftData function in useCallback.
   const loadDraftData = useCallback(async () => {
     // Only set loading on initial fetch.
-    if (!draftInfo) setLoading(true);
+    if (!initialLoadDone.current) setLoading(true);
     try {
       // Fetch and format players.
       const rawData = await fetchPlayers2025();
-      const formattedPlayers: Player[] = rawData.map((item: any) => ({
-        id: item.id.S,
-        name: item.name.S,
-        team: item.team.S,
-        goals_2024: parseInt(item.goals_2024.N, 10),
-        draftedBy: item.draftedBy?.S || null,
-      }));
+      const formattedPlayers: Player[] = rawData.map((item: any) => {
+        const goals2025 = parseInt(item.goals_2025?.N || '0', 10);
+        return {
+          id: item.id?.S || item.id,
+          name: item.name?.S || item.name,
+          team: item.team?.S || item.team,
+          // Use goals_2025 for draft (last year's performance)
+          goals_2024: goals2025,
+          draftedBy: item.draftedBy?.S || item.draftedBy || null,
+          // Use isNew flags from database (based on transfer data)
+          isNew: item.isNew?.BOOL || false,
+          isNewToTeam: item.isNewToTeam?.BOOL || false,
+        };
+      });
+      // Sort by goals descending for better draft experience
+      formattedPlayers.sort((a, b) => (b.goals_2024 || 0) - (a.goals_2024 || 0));
       // Update players only if they have changed.
       setPlayers((prev) =>
         JSON.stringify(prev) === JSON.stringify(formattedPlayers)
@@ -152,8 +197,11 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       console.error("Error loading draft data:", error);
     } finally {
       setLoading(false);
+      initialLoadDone.current = true;
     }
-  }, [leagueId, simpleMode, draftInfo]);
+  // Note: draftInfo intentionally excluded to prevent infinite loop
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueId, simpleMode]);
 
   // This effect simply loads the draft settings on mount.
   useEffect(() => {
@@ -254,22 +302,26 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
 
     const now = new Date();
     const startTime = new Date(draftInfo.draftStartTime);
-    if (now < startTime) {
+    if (now < startTime && !testMode) {
       alert("Draft session has not started yet.");
       return;
     }
 
-    if (draftInfo.current_turn_team !== userFantasyPlayerId) {
+    // In test mode, skip the turn check and draft as current_turn_team
+    if (!testMode && draftInfo.current_turn_team !== userFantasyPlayerId) {
       alert("It's not your turn to draft.");
       return;
     }
+
+    // Determine who is drafting: in test mode, use current turn team; otherwise use user's team
+    const draftingTeam = testMode ? draftInfo.current_turn_team : userFantasyPlayerId;
 
     try {
       // Call the API to draft the player.
       await draftPlayer(
         String(leagueId),
         String(player.id),
-        draftInfo.current_turn_team
+        draftingTeam || draftInfo.current_turn_team
       );
 
       // Re-fetch the updated draft state from the DB.
@@ -284,13 +336,19 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
       setDraftedPlayers(draftedPlayersData);
 
       const rawData = await fetchPlayers2025();
-      const formattedPlayers: Player[] = rawData.map((item: any) => ({
-        id: item.id.S,
-        name: item.name.S,
-        team: item.team.S,
-        goals_2024: parseInt(item.goals_2024.N, 10),
-        draftedBy: item.draftedBy?.S || null,
-      }));
+      const formattedPlayers: Player[] = rawData.map((item: any) => {
+        const goals2025 = parseInt(item.goals_2025?.N || '0', 10);
+        return {
+          id: item.id?.S || item.id,
+          name: item.name?.S || item.name,
+          team: item.team?.S || item.team,
+          goals_2024: goals2025,
+          draftedBy: item.draftedBy?.S || item.draftedBy || null,
+          isNew: item.isNew?.BOOL || false,
+          isNewToTeam: item.isNewToTeam?.BOOL || false,
+        };
+      });
+      formattedPlayers.sort((a, b) => (b.goals_2024 || 0) - (a.goals_2024 || 0));
       setPlayers(formattedPlayers);
 
       // Now update turn: update DB and re-fetch using nextTurn.
@@ -298,6 +356,45 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     } catch (error) {
       console.error("Error drafting player:", error);
       alert("Failed to draft the player. Please try again.");
+    }
+  };
+
+  // Reset draft for testing (commissioner only)
+  const handleResetDraft = async () => {
+    if (!draftInfo || !confirm("Are you sure you want to reset the draft? This will clear all picks.")) {
+      return;
+    }
+
+    setResetting(true);
+    try {
+      const firstTeam = draftInfo.draftOrder[0];
+
+      // Reset draft settings
+      await updateDraftSettings(String(leagueId), {
+        draft_status: "in_progress",
+        current_turn_team: firstTeam,
+        overall_pick: 1,
+        current_round: 1,
+      });
+
+      // Clear drafted players via API
+      const response = await fetch(
+        `https://emp47nfi83.execute-api.us-east-1.amazonaws.com/prod/league/${leagueId}/draft/reset`,
+        { method: "POST" }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to clear drafted players");
+      }
+
+      // Refresh data
+      await loadDraftData();
+      alert("Draft reset successfully!");
+    } catch (error) {
+      console.error("Error resetting draft:", error);
+      alert("Failed to reset draft. Please try again.");
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -327,8 +424,48 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
     >
       <div className="relative flex flex-col items-center p-4 bg-black shadow-xl h-screen">
         <h1 className="text-3xl font-bold text-[#B8860B] mb-6">
-          Draft Players - 2024
+          Draft Players - 2026
         </h1>
+
+        {/* Commissioner Controls */}
+        {userIsCommissioner && (
+          <div className="mb-4 p-3 bg-yellow-900 rounded-lg border border-yellow-600">
+            <div className="flex items-center gap-4 flex-wrap">
+              <label className="flex items-center gap-2 text-yellow-200 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={testMode}
+                  onChange={(e) => setTestMode(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                <span className="font-bold">Test Mode</span>
+              </label>
+              {testMode && (
+                <span className="text-yellow-400 text-sm">
+                  (Drafting as: {currentTeamName})
+                </span>
+              )}
+              <Button
+                variant="contained"
+                size="small"
+                onClick={handleResetDraft}
+                disabled={resetting}
+                sx={{
+                  bgcolor: "#dc2626",
+                  "&:hover": { bgcolor: "#b91c1c" },
+                  fontSize: "0.75rem",
+                }}
+              >
+                {resetting ? "Resetting..." : "Reset Draft"}
+              </Button>
+            </div>
+            {testMode && (
+              <p className="text-yellow-300 text-xs mt-1">
+                Test mode enabled - you can draft as any team.
+              </p>
+            )}
+          </div>
+        )}
 
         <>
           <div className="mb-4 text-white">
@@ -378,6 +515,7 @@ const LeagueDraftPage: React.FC<{ leagueId: string }> = ({
                         countdown={countdown}
                         fantasyPlayers={fantasyPlayers}
                         draftedPlayers={draftedPlayers}
+                        testMode={testMode}
                       />
                     </div>
                     <div className="hidden lg:block lg:w-2/5">

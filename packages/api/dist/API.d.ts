@@ -15,6 +15,9 @@ export interface DraftInfo {
     transfer_snake_order?: boolean;
     transferOrder?: string[];
     transfer_window_status?: string;
+    goals2025?: {
+        [fantasyPlayerId: string]: number;
+    };
 }
 export interface GoldenBootTableResponse {
     TeamName: string;
@@ -26,7 +29,14 @@ export interface Player {
     id: string;
     name: string;
     team: string;
-    goals_2025: number;
+    goals_2026: number;
+    goals_2025?: number;
+    transferStatus?: "Transferred In" | "Transferred Out" | "Transferred In/Out" | "Original";
+    joinedDate?: string;
+    leftDate?: string;
+    totalGoalsAllTime?: number;
+    goalsAtDrop?: number;
+    goalsBeforePickup?: number;
 }
 export interface InitializeLeaguePayload {
     league_id: string;
@@ -92,6 +102,8 @@ export declare const updateDraftSettings: (leagueId: string, settings: {
     transferOrder?: string[];
     transfer_window_start?: string;
     transfer_window_end?: string;
+    transfer_window_status?: string;
+    transfer_current_turn_team?: string;
 }) => Promise<DraftInfo | null>;
 export declare const joinDraftSession: (leagueId: string, teamId: string) => Promise<any>;
 export declare const fetchActiveParticipants: (leagueId: string) => Promise<string[]>;

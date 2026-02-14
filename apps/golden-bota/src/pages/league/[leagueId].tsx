@@ -112,11 +112,38 @@ const LeaguePage: React.FC<LeaguePageProps> = ({ leagueId, leagueName }) => {
         {leagueName}
       </Typography>
 
-      {/* Draft Time Display - Show past date since draft has happened */}
+      {/* Draft Status Display */}
       <Box sx={{ mb: 4, p: 2, bgcolor: "background.paper", borderRadius: 1 }}>
-        <Typography variant="h6">
-          Draft completed on: {new Date("2025-01-15T19:00:00").toLocaleString()}
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          {draftSettings?.draft_status === "completed" && draftSettings?.draftStartTime
+            ? `Draft completed on: ${new Date(draftSettings.draftStartTime).toLocaleString()}`
+            : draftSettings?.draft_status === "in_progress"
+            ? "Draft in progress..."
+            : draftSettings?.draftStartTime
+            ? `Draft scheduled for: ${new Date(draftSettings.draftStartTime).toLocaleString()}`
+            : "Draft not yet scheduled"}
         </Typography>
+
+        {/* Draft Room Buttons */}
+        {draftSettings?.draft_status === "in_progress" && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleJoinDraft}
+            sx={{ mr: 2 }}
+          >
+            Join Draft
+          </Button>
+        )}
+        {draftSettings?.draftStartTime && draftSettings?.draft_status !== "in_progress" && (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleGoToDraft}
+          >
+            {draftSettings?.draft_status === "completed" ? "View Draft Results" : "Enter Draft Room"}
+          </Button>
+        )}
       </Box>
 
       {/* Commissioner Settings */}
@@ -132,7 +159,7 @@ const LeaguePage: React.FC<LeaguePageProps> = ({ leagueId, leagueName }) => {
               }));
             }}
           />
-          <DraftSettings leagueId={leagueId} />
+          <DraftSettings leagueId={leagueId} draftSettings={draftSettings} />
           <TransferWindowSettings
             leagueId={leagueId}
             draftSettings={draftSettings}

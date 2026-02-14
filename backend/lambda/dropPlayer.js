@@ -37,12 +37,12 @@ exports.handler = async (event) => {
 
     const dropDate = new Date().toISOString();
 
-    // Get current player info from Players_2025 table before dropping
+    // Get current player info from Players_2026 table before dropping
     let currentGoals = 0;
     let playerName = `Player ${player_id}`; // Default fallback name
     try {
       const playerInfoParams = {
-        TableName: "Players_2025",
+        TableName: "Players_2026",
         Key: { id: player_id }, // Keep as string to match DynamoDB
       };
 
@@ -50,7 +50,7 @@ exports.handler = async (event) => {
         new GetCommand(playerInfoParams)
       );
       if (playerResult.Item) {
-        currentGoals = playerResult.Item.goals_2025 || 0;
+        currentGoals = playerResult.Item.goals_2026 || 0;
         playerName = playerResult.Item.name || `Player ${player_id}`;
         console.log(
           `📊 Player ${playerName} (${player_id}) has ${currentGoals} goals at time of drop`

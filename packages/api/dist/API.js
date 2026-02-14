@@ -120,6 +120,8 @@ const getDraftSettings = async (leagueId) => {
             ? data.transferOrder.map((item) => (item.S ? item.S : item))
             : [],
         transfer_window_status: data.transfer_window_status || "",
+        // 2025 standings for draft order display
+        goals2025: data.goals2025 || {},
     };
     return draftInfo;
 };

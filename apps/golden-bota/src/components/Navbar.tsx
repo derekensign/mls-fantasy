@@ -100,6 +100,12 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
               >
                 Table
               </Link>
+              <Link
+                href={`/league/${userDetails.leagueId}/draft`}
+                className="text-white hover:text-gray-300"
+              >
+                Draft
+              </Link>
               {isTransferWindowActive && (
                 <Link
                   href={`/league/${userDetails.leagueId}/transfer`}
@@ -140,6 +146,13 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
                 onClick={() => setIsOpen(false)}
               >
                 Table
+              </Link>
+              <Link
+                href={`/league/${userDetails.leagueId}/draft`}
+                className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                onClick={() => setIsOpen(false)}
+              >
+                Draft
               </Link>
               {isTransferWindowActive && (
                 <Link

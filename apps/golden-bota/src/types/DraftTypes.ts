@@ -4,6 +4,8 @@ export interface Player {
   team: string;
   goals_2024: number;
   draftedBy?: string | null;
+  isNew?: boolean; // True if player is new to MLS (from outside league)
+  isNewToTeam?: boolean; // True if player transferred within MLS (new to current team)
   // Transfer window fields
   player_dropped?: boolean;
   drop_date?: string;
@@ -42,6 +44,8 @@ export interface DraftInfo {
   transfer_max_rounds?: number;
   transfer_snake_order?: boolean;
   transferOrder?: string[];
+  // 2025 standings for draft order display
+  goals2025?: { [fantasyPlayerId: string]: number };
 }
 
 export interface FantasyPlayer {
