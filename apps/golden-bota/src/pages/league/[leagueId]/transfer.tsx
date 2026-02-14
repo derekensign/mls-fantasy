@@ -177,6 +177,8 @@ const TransferWindowPage: React.FC = () => {
             droppedAt: dp.dropped_at || null,
             isPickedUp: !!dp.picked_up_at, // True if picked_up_at has a value
             pickedUpAt: dp.picked_up_at || null,
+            goalsBeforePickup: dp.goals_before_pickup || 0,
+            goalsAtDrop: dp.goals_at_drop || 0,
           }));
 
         // Cross-reference with availablePlayers to get full player data (names, goals, etc.)
@@ -189,6 +191,8 @@ const TransferWindowPage: React.FC = () => {
                 droppedAt: string | null;
                 isPickedUp: boolean;
                 pickedUpAt: string | null;
+                goalsBeforePickup: number;
+                goalsAtDrop: number;
               }) => op.playerId === player.id.toString()
             );
             if (ownedPlayer) {
@@ -198,6 +202,8 @@ const TransferWindowPage: React.FC = () => {
                 droppedAt: ownedPlayer.droppedAt,
                 isPickedUp: ownedPlayer.isPickedUp,
                 pickedUpAt: ownedPlayer.pickedUpAt,
+                goalsBeforePickup: ownedPlayer.goalsBeforePickup,
+                goalsAtDrop: ownedPlayer.goalsAtDrop,
               };
             }
             return null;

@@ -38,21 +38,24 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
     setPlayers(fantasyPlayers);
   }, [fantasyPlayers]);
 
+  // Helper to get the identifier - prefer FantasyPlayerId, fallback to FantasyPlayerName
+  const getPlayerId = (player: FantasyPlayer): string => {
+    return player.FantasyPlayerId || player.FantasyPlayerName;
+  };
+
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     const newPlayers = Array.from(players);
     const [removed] = newPlayers.splice(result.source.index, 1);
     newPlayers.splice(result.destination.index, 0, removed);
     setPlayers(newPlayers);
-    // Use FantasyPlayerName as the identifier since Golden Boot data doesn't have FantasyPlayerId
-    onOrderChange(newPlayers.map((p) => p.FantasyPlayerName));
+    onOrderChange(newPlayers.map((p) => getPlayerId(p)));
   };
 
   const randomizeOrder = () => {
     const randomized = Array.from(players).sort(() => Math.random() - 0.5);
     setPlayers(randomized);
-    // Use FantasyPlayerName as the identifier
-    onOrderChange(randomized.map((p) => p.FantasyPlayerName));
+    onOrderChange(randomized.map((p) => getPlayerId(p)));
   };
 
   if (!mounted) return null;
@@ -73,10 +76,15 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
         <Droppable droppableId="draftOrder">
           {(provided: any) => (
             <div ref={provided.innerRef} {...provided.droppableProps}>
-              {players.map((player, index) => (
+              {players.map((player, index) => {
+                // Create a safe ID by using index as fallback and sanitizing the name
+                const safeId = player.FantasyPlayerName?.trim()
+                  ? `player-${index}-${player.FantasyPlayerName.trim().replace(/\s+/g, '-')}`
+                  : `player-${index}`;
+                return (
                 <Draggable
-                  key={player.FantasyPlayerName}
-                  draggableId={player.FantasyPlayerName}
+                  key={safeId}
+                  draggableId={safeId}
                   index={index}
                 >
                   {(provided: any, snapshot: any) => (
@@ -100,7 +108,8 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
                     </Paper>
                   )}
                 </Draggable>
-              ))}
+              );
+              })}
               {provided.placeholder}
             </div>
           )}

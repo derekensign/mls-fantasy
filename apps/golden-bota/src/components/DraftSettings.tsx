@@ -70,18 +70,27 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
           FantasyPlayerId: player.FantasyPlayerId.toString(),
         }));
 
+        // Get 2025 goals from draftSettings if available
+        const goals2025Map = draftSettings?.goals2025 || {};
+
+        // Apply 2025 goals to players for display
+        const playersWithGoals = convertedPlayers.map((player) => ({
+          ...player,
+          TotalGoals: goals2025Map[player.FantasyPlayerId] || 0,
+        }));
+
         if (
           !draftSettings ||
           !draftSettings.draftOrder ||
           draftSettings.draftOrder.length === 0
         ) {
           // If no draft order exists in settings, simply use the converted player order.
-          setOrderedPlayers(convertedPlayers);
+          setOrderedPlayers(playersWithGoals);
 
           // Also, if no draftOrderIds have been set, use the player IDs as a fallback.
-          if (convertedPlayers.length > 0 && draftOrderIds.length === 0) {
+          if (playersWithGoals.length > 0 && draftOrderIds.length === 0) {
             setDraftOrderIds(
-              convertedPlayers.map((player) => player.FantasyPlayerId)
+              playersWithGoals.map((player) => player.FantasyPlayerId)
             );
           }
         } else {
@@ -90,7 +99,7 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
             item.S ? item.S : extractValue(item)
           );
           // Create a shallow copy and sort the fetched players to match the setting.
-          const sortedPlayers = [...convertedPlayers].sort(
+          const sortedPlayers = [...playersWithGoals].sort(
             (a, b) =>
               orderFromSettings.indexOf(a.FantasyPlayerId) -
               orderFromSettings.indexOf(b.FantasyPlayerId)

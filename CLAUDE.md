@@ -20,6 +20,26 @@ npm run build     # Compile TypeScript to dist/
 npm run watch     # Watch mode for development
 ```
 
+## Testing
+
+```bash
+# From apps/golden-bota
+npm test                              # Run all 87 Playwright tests
+npm run test:ui                       # Interactive UI mode
+npx playwright test --grep "draft"    # Run specific test suite
+npx playwright test --headed          # Run with visible browser
+```
+
+Tests are in `apps/golden-bota/tests/` covering:
+- `auth.spec.ts` - Authentication flows
+- `draft.spec.ts` - Draft page and commissioner test mode
+- `league.spec.ts` - League management
+- `my-team.spec.ts` - Team display
+- `standings.spec.ts` - Golden Boot standings
+- `transfer.spec.ts` - Transfer window
+
+Note: Commissioner-only tests (test mode, reset) require authentication to fully exercise.
+
 ## AWS Access
 
 ```bash
@@ -131,8 +151,42 @@ The transfer window is the most complex part of the system:
 - **App Client ID**: `7b2ljliksvl2pn7gadjrn90e1a`
 - **Session duration**: Refresh token set to 30 days (updated Feb 2026)
 
+## Season Management Scripts
+
+Located in `backend/goldenbota2025/OneTime/`:
+
+| Script | Purpose |
+|--------|---------|
+| `resetDraftForTesting.js` | Wipe draft state, clear League_1, reset Fantasy_Players rosters |
+| `markNewPlayers.js` | Tag players with `isNew` (new to MLS) and `isNewToTeam` badges |
+| `archive2025Standings.js` | Archive previous season standings |
+| `archiveLeague1_2025.js` | Archive league player assignments |
+| `initializeDraft2026.js` | Set up draft for new season |
+
+Run scripts with: `AWS_PROFILE=mls-fantasy node backend/goldenbota2025/OneTime/<script>.js`
+(Remember to unset work AWS env vars first)
+
+## Commissioner Features
+
+- **Test Mode** (draft page): Allows commissioner to draft as any team for testing
+- **Reset Draft**: Button to wipe draft and start fresh (calls resetDraftForTesting logic)
+- Commissioner is determined by matching `userDetails.email` with `leagueSettings.commissioner`
+
+## Player Data Fields
+
+| Field | Purpose |
+|-------|---------|
+| `isNew` | Player is new to MLS (first season) |
+| `isNewToTeam` | Player transferred to new MLS team (intra-league transfer) |
+| `goals_2025` | Previous season goals (for reference during draft) |
+
+## Current Season
+
+**2026 Season** is active. Players table is `Players_2026`.
+
 ## Notes
 
 - Lambda functions are deployed via AWS Console (not SAM/CloudFormation for the active API)
 - The SAM-deployed REST APIs (`7vyo0a46v4`, `2z3015lyvl`) exist but are NOT used by the app
 - Table names are hardcoded in Lambda functions (no environment variables)
+- Production URL: Deployed on Vercel (check Vercel dashboard for current URL)
