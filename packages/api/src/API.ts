@@ -296,6 +296,7 @@ export const updateDraftSettings = async (
     current_team_turn_ends?: string;
     overall_pick?: number;
     current_round?: number;
+    draft_status?: string;
     // Transfer window fields
     transfer_max_rounds?: number;
     transfer_snake_order?: boolean;

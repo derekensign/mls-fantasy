@@ -97,6 +97,7 @@ export declare const updateDraftSettings: (leagueId: string, settings: {
     current_team_turn_ends?: string;
     overall_pick?: number;
     current_round?: number;
+    draft_status?: string;
     transfer_max_rounds?: number;
     transfer_snake_order?: boolean;
     transferOrder?: string[];
