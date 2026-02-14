@@ -1,0 +1,3 @@
+echo "🔨 Running build check before push..."
+npm run build || (echo "❌ Build failed! Fix errors before pushing." && exit 1)
+echo "✅ Build passed!"
