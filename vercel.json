@@ -1,3 +1,10 @@
 {
-  "version": 2
+  "version": 2,
+  "buildCommand": "npm run build",
+  "framework": "nextjs",
+  "functions": {
+    "**/*": {
+      "runtime": "nodejs20.x"
+    }
+  }
 } 

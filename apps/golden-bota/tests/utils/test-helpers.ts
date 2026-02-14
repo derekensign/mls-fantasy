@@ -18,18 +18,22 @@ export async function enableTestMode(page: Page): Promise<void> {
 
 /**
  * Wait for a table to load with data
+ * Uses .first() to handle pages with multiple tables
  */
 export async function waitForTableLoad(page: Page, timeout = 10000): Promise<void> {
-  await expect(page.locator("table")).toBeVisible({ timeout });
+  await expect(page.locator("table").first()).toBeVisible({ timeout });
   // Wait a bit for data to populate
   await page.waitForTimeout(500);
 }
 
 /**
- * Get the number of rows in a table body
+ * Get the number of rows in the available players table body
+ * Targets the first table on the page (available players, not drafted players)
  */
-export async function getRowCount(page: Page, tableSelector = "table tbody tr"): Promise<number> {
-  return await page.locator(tableSelector).count();
+export async function getRowCount(page: Page, tableSelector = "table:first-of-type tbody tr"): Promise<number> {
+  // Use the first table which is the available players table
+  const firstTable = page.locator("table").first();
+  return await firstTable.locator("tbody tr").count();
 }
 
 /**
