@@ -79,7 +79,7 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
 
         {/* Desktop menu */}
         <div className="hidden md:flex space-x-4 ml-auto pr-4">
-          {userDetails && (
+          {userDetails ? (
             <>
               <Link
                 href={leagueLink}
@@ -111,6 +111,10 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
                 </Link>
               )}
             </>
+          ) : (
+            <Link href="/MyTeam" className="text-white hover:text-gray-300">
+              Complete Your Profile
+            </Link>
           )}
         </div>
 
@@ -120,47 +124,57 @@ function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
             isOpen ? "block" : "hidden"
           } md:hidden fixed left-0 w-full top-16 bg-black min-h-fit max-h-[1/4] z-40`}
         >
-          {userDetails && (
-            <div className="flex flex-col space-y-2 p-3 w-full">
-              <Link
-                href={leagueLink}
-                className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                onClick={() => setIsOpen(false)}
-              >
-                League
-              </Link>
+          <div className="flex flex-col space-y-2 p-3 w-full">
+            {userDetails ? (
+              <>
+                <Link
+                  href={leagueLink}
+                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  League
+                </Link>
+                <Link
+                  href="/MyTeam"
+                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  My Team
+                </Link>
+                <Link
+                  href={`/league/${userDetails.leagueId}/table`}
+                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Table
+                </Link>
+                <Link
+                  href={`/league/${userDetails.leagueId}/draft`}
+                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Draft
+                </Link>
+                {isTransferWindowActive && (
+                  <Link
+                    href={`/league/${userDetails.leagueId}/transfer`}
+                    className="text-white hover:text-gray-300 text-lg py-1 w-full"
+                    onClick={() => setIsOpen(false)}
+                  >
+                    Transfer
+                  </Link>
+                )}
+              </>
+            ) : (
               <Link
                 href="/MyTeam"
                 className="text-white hover:text-gray-300 text-lg py-1 w-full"
                 onClick={() => setIsOpen(false)}
               >
-                My Team
+                Complete Your Profile
               </Link>
-              <Link
-                href={`/league/${userDetails.leagueId}/table`}
-                className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                onClick={() => setIsOpen(false)}
-              >
-                Table
-              </Link>
-              <Link
-                href={`/league/${userDetails.leagueId}/draft`}
-                className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                onClick={() => setIsOpen(false)}
-              >
-                Draft
-              </Link>
-              {isTransferWindowActive && (
-                <Link
-                  href={`/league/${userDetails.leagueId}/transfer`}
-                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Transfer
-                </Link>
-              )}
-            </div>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Authentication Buttons */}
