@@ -71,6 +71,12 @@ export default function MyTeam() {
           );
 
           if (!userResponse.ok) {
+            // If user not found (new user), let them complete their profile
+            if (userResponse.status === 404 || userResponse.status === 400) {
+              setTeam(defaultTeam);
+              setPlayerName("");
+              return;
+            }
             throw new Error("Failed to fetch user data");
           }
 
