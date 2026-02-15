@@ -58,3 +58,6 @@ test-*.mjs
 # API distribution files
 packages/api/dist/
 packages/api/node_modules/
+.env.vercel.production
+backend/lambda/node_modules/
+backend/lambda/updateGoals2026.zip
