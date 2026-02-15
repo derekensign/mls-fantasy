@@ -48,13 +48,9 @@ export const handler = async (event) => {
       JSON.stringify(draftedPlayersResponse.Items, null, 2)
     );
 
-    if (!draftedPlayersResponse.Items?.length) {
-      console.log("No drafted players found");
-      return {
-        statusCode: 200,
-        headers: commonHeaders,
-        body: JSON.stringify([]),
-      };
+    const hasDraftedPlayers = draftedPlayersResponse.Items?.length > 0;
+    if (!hasDraftedPlayers) {
+      console.log("No drafted players found - will show fantasy teams with 0 goals");
     }
 
     // Get player details from Players_2026
@@ -180,6 +176,17 @@ export const handler = async (event) => {
 
     // Create result with joined data and transfer info
     const result = fantasyPlayersResponse.Items?.map((fp) => {
+      // If no drafted players, return fantasy team with 0 goals and empty players array
+      if (!hasDraftedPlayers) {
+        return {
+          FantasyPlayerName: fp.FantasyPlayerName,
+          TeamName: fp.TeamName,
+          TeamLogo: fp.TeamLogo || null,
+          TotalGoals: 0,
+          Players: [],
+        };
+      }
+
       // Find all players drafted by this fantasy player
       const draftedPlayers = draftedPlayersResponse.Items.filter(
         (dp) => dp.team_drafted_by === String(fp.FantasyPlayerId)
