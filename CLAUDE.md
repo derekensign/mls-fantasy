@@ -162,9 +162,34 @@ Located in `backend/goldenbota2025/OneTime/`:
 | `archive2025Standings.js` | Archive previous season standings |
 | `archiveLeague1_2025.js` | Archive league player assignments |
 | `initializeDraft2026.js` | Set up draft for new season |
+| `swapDraftPicks.js` | Swap drafted players between owners (reusable, CLI-driven) |
 
-Run scripts with: `AWS_PROFILE=mls-fantasy node backend/goldenbota2025/OneTime/<script>.js`
-(Remember to unset work AWS env vars first)
+Run scripts with:
+```bash
+unset AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN AWS_PROFILE AWS_DEFAULT_PROFILE
+source .env.local
+node backend/goldenbota2025/OneTime/<script>.js
+```
+
+### Swapping Draft Picks
+
+Use `swapDraftPicks.js` to reassign drafted players after the draft. It updates all three relevant tables (`League_1`, `Players_2026`, `Draft`).
+
+```bash
+# Usage: node swapDraftPicks.js <ownerName> "<oldPlayer>:<newPlayer>" [more swaps...]
+
+# Preview changes without writing
+node backend/goldenbota2025/OneTime/swapDraftPicks.js "Colby" "Alonso Martínez:Evander" --dry-run
+
+# Apply changes
+node backend/goldenbota2025/OneTime/swapDraftPicks.js "Colby" "Alonso Martínez:Evander" "Brad Stuver:Timo Werner"
+```
+
+- Owner name is matched with `contains` against `FantasyPlayerName` in `Fantasy_Players`
+- Player names must match exactly as stored in `Players_2026` (including accented characters like Martínez)
+- Validates the old player is actually drafted by the specified owner
+- Validates the new player isn't already drafted by someone else
+- Use `--dry-run` to verify everything before committing changes
 
 ## Commissioner Features
 

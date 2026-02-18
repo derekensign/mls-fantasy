@@ -164,7 +164,10 @@ async function scrapeTeamRoster(page, team) {
         const allLinks = document.querySelectorAll('a[href*="/player"], a[href*="/players/"]');
         allLinks.forEach((link) => {
           // Try to get name from link text first
-          let name = link.textContent?.trim();
+          // Split on newlines and take first line to avoid embedded jersey numbers/nationality
+          let name = link.textContent?.trim().split('\n')[0].trim();
+          // Remove trailing " - NUMBER" pattern (e.g., "Carlos Coronel - 31")
+          name = name?.replace(/\s*[-–]\s*\d+\s*$/, '');
           // If link text is generic like "Player Page", try to extract from URL
           if (!name || name.length < 3 || name.includes("Player") || name.includes("View") || name.includes("All")) {
             const href = link.getAttribute('href') || '';
@@ -175,7 +178,10 @@ async function scrapeTeamRoster(page, team) {
             }
           }
           if (name && name.length > 3 && !name.includes("View") && !name.includes("All") && !name.includes("Player")) {
-            results.push({ name, number: null, position: null, team: teamName });
+            // Extract jersey number from full link text
+            const fullText = link.textContent || '';
+            const numberMatch = fullText.match(/\b(\d{1,2})\b/);
+            results.push({ name, number: numberMatch ? numberMatch[1] : null, position: null, team: teamName });
           }
         });
       }
