@@ -24,7 +24,7 @@ export interface Player {
   id: string;
   name: string;
   team: string;
-  goals_2025: number;
+  goals_2026: number;
 }
 
 // Transfer Window Functions

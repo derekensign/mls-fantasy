@@ -141,14 +141,8 @@ function Row({ row }: { row: TeamWithRank }) {
                             color: "#2C1810", // Dark brown for good contrast
                           }}
                         >
-                          {player.goals_2025}
+                          {player.goals_2026}
                         </Box>
-                        {player.totalGoalsAllTime !== undefined &&
-                          player.totalGoalsAllTime !== player.goals_2025 && (
-                            <Box sx={{ fontSize: "0.75rem", color: "#666" }}>
-                              (was {player.totalGoalsAllTime})
-                            </Box>
-                          )}
                       </Box>
                     </Box>
                   </Box>
@@ -206,19 +200,7 @@ function Row({ row }: { row: TeamWithRank }) {
                             )}
                         </TableCell>
                         <TableCell>
-                          {player.goals_2025}
-                          {player.totalGoalsAllTime !== undefined &&
-                            player.totalGoalsAllTime !== player.goals_2025 && (
-                              <span
-                                style={{
-                                  color: "#666",
-                                  fontSize: "0.8rem",
-                                  marginLeft: "4px",
-                                }}
-                              >
-                                (was {player.totalGoalsAllTime})
-                              </span>
-                            )}
+                          {player.goals_2026}
                         </TableCell>
                       </TableRow>
                     ))}
