@@ -134,6 +134,21 @@ export const handler = async (event) => {
       expressionAttributeValues[":transfer_current_turn_team"] =
         body.transfer_current_turn_team;
     }
+    // Commissioner-selectable transfer behaviour. Only "standard" and "add_only"
+    // are valid; reject anything else so a typo can't put the window in an
+    // undefined mode.
+    if (body.transfer_mode !== undefined) {
+      if (
+        body.transfer_mode !== "standard" &&
+        body.transfer_mode !== "add_only"
+      ) {
+        throw new Error(
+          'transfer_mode must be either "standard" or "add_only".'
+        );
+      }
+      updateFields.push("transfer_mode = :transfer_mode");
+      expressionAttributeValues[":transfer_mode"] = body.transfer_mode;
+    }
 
     if (updateFields.length === 0) {
       throw new Error("No fields provided to update.");

@@ -22,6 +22,10 @@ export interface DraftInfo {
   transfer_snake_order?: boolean;
   transferOrder?: string[];
   transfer_window_status?: string;
+  // Commissioner-selectable transfer behaviour:
+  //  - "standard": each turn a manager drops a player, then picks one up (roster size fixed)
+  //  - "add_only": each turn a manager just adds a player, no drop required (squad grows)
+  transfer_mode?: "standard" | "add_only";
   // 2025 standings for draft order display
   goals2025?: { [fantasyPlayerId: string]: number };
 }
@@ -232,6 +236,11 @@ export const getDraftSettings = async (
       ? data.transferOrder.map((item: any) => (item.S ? item.S : item))
       : [],
     transfer_window_status: data.transfer_window_status || "",
+    // Default to "standard" (drop-then-pickup) when the league hasn't opted into add-only.
+    transfer_mode:
+      (data.transfer_mode?.S || data.transfer_mode) === "add_only"
+        ? "add_only"
+        : "standard",
     // 2025 standings for draft order display
     goals2025: data.goals2025 || {},
   };
@@ -305,6 +314,7 @@ export const updateDraftSettings = async (
     transfer_window_end?: string;
     transfer_window_status?: string;
     transfer_current_turn_team?: string;
+    transfer_mode?: "standard" | "add_only";
   }
 ): Promise<DraftInfo | null> => {
   try {

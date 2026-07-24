@@ -81,6 +81,12 @@ const TransferWindowPage: React.FC = () => {
   const transferStep = localTransferState.step;
   const selectedDropPlayerFromDB = localTransferState.droppedPlayerId || null;
 
+  // "add_only" mode: managers simply add players each turn — there is no drop
+  // phase, so the flow is always a straight pickup and squads grow. Defaults to
+  // the classic "standard" drop-then-pickup behaviour.
+  const isAddOnlyMode = transferInfo?.mode === "add_only";
+  const effectiveTransferStep = isAddOnlyMode ? "pickup" : transferStep;
+
   // Load transfer window data
   const loadTransferData = useCallback(async () => {
     if (!leagueId) return;
@@ -416,13 +422,11 @@ const TransferWindowPage: React.FC = () => {
 
   // Handle picking up a player
   const handlePickupPlayer = async (player: Player) => {
-    if (
-      !transferInfo ||
-      !actualUserFantasyPlayerId ||
-      !selectedDropPlayerFromDB ||
-      isPickingUp
-    )
-      return;
+    if (!transferInfo || !actualUserFantasyPlayerId || isPickingUp) return;
+
+    // In standard mode a player must have been dropped first; in add-only mode
+    // there is no drop, so we go straight to the pickup.
+    if (!isAddOnlyMode && !selectedDropPlayerFromDB) return;
 
     setIsPickingUp(true);
 
@@ -430,7 +434,7 @@ const TransferWindowPage: React.FC = () => {
     // The user should be able to pick up immediately after dropping in the same turn
     if (
       transferInfo.currentTurn !== actualUserFantasyPlayerId &&
-      transferStep !== "pickup"
+      effectiveTransferStep !== "pickup"
     ) {
       await loadTransferData();
 
@@ -778,10 +782,14 @@ const TransferWindowPage: React.FC = () => {
         {/* Transfer Status */}
         {isUserTurn && (
           <Alert
-            severity={transferStep === "drop" ? "warning" : "info"}
+            severity={
+              !isAddOnlyMode && transferStep === "drop" ? "warning" : "info"
+            }
             sx={{ mb: 2 }}
           >
-            {transferStep === "drop"
+            {isAddOnlyMode
+              ? "Your turn: add a player to your squad"
+              : transferStep === "drop"
               ? "Step 1: Select a player from your team to drop"
               : `Step 2: Select a player to pick up (dropping: ${
                   userTeamPlayers.find(
@@ -810,7 +818,7 @@ const TransferWindowPage: React.FC = () => {
         <Paper sx={{ p: 3, mb: 3, backgroundColor: "#1a1a1a" }}>
           <Typography variant="h5" sx={{ color: "#B8860B", mb: 2 }}>
             My Current Team{" "}
-            {isUserTurn && transferStep === "drop"
+            {!isAddOnlyMode && isUserTurn && transferStep === "drop"
               ? "- Select Player to Drop"
               : ""}
           </Typography>
@@ -910,7 +918,22 @@ const TransferWindowPage: React.FC = () => {
                         )}
                     </Typography>
                   </Box>
-                  {!player.isDropped ? (
+                  {player.isDropped ? null : isAddOnlyMode ? (
+                    // Add-only mode: no drops, so every rostered player just
+                    // shows a static "On Team" label.
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        color: "#ccc",
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        fontSize: "0.9em",
+                        ml: 2,
+                      }}
+                    >
+                      On Team
+                    </Typography>
+                  ) : (
                     <Button
                       variant="contained"
                       onClick={() => handleDropPlayer(player.id.toString())}
@@ -952,7 +975,8 @@ const TransferWindowPage: React.FC = () => {
                         ? "DROP PLAYER"
                         : "On Team"}
                     </Button>
-                  ) : (
+                  )}
+                  {player.isDropped && (
                     <Typography
                       variant="body2"
                       sx={{
@@ -1007,7 +1031,7 @@ const TransferWindowPage: React.FC = () => {
             players={players}
             draftedPlayers={[]} // For transfer window, we show all available players
             handleDraft={
-              transferStep === "pickup" ? handlePickupPlayer : () => {}
+              effectiveTransferStep === "pickup" ? handlePickupPlayer : () => {}
             }
             draftInfo={null} // We'll handle turn logic in this component
             userFantasyPlayerId={actualUserFantasyPlayerId}
@@ -1016,9 +1040,10 @@ const TransferWindowPage: React.FC = () => {
             mode="transfer" // Add mode prop
             isUserTurn={
               isUserTurn &&
-              transferStep === "pickup" &&
+              effectiveTransferStep === "pickup" &&
               transferInfo.status !== "completed"
             }
+            isAddOnlyMode={isAddOnlyMode}
             selectedDropPlayer={selectedDropPlayerFromDB}
             transferStatus={transferInfo.status} // Add transfer status for completion check
             getPlayerOwnership={getPlayerOwnership}

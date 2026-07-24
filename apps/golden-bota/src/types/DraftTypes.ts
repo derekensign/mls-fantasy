@@ -85,6 +85,8 @@ export interface TransferWindowInfo {
   end: string;
   currentTurn?: string;
   round: number;
+  // "standard" = drop then pick up; "add_only" = add without dropping (squad grows).
+  mode?: "standard" | "add_only";
   transferOrder: string[];
   transferActions: TransferAction[];
   isActive: boolean;

@@ -45,8 +45,9 @@ test.describe("Standings Page - Team Data", () => {
     // Wait for data to load
     await page.waitForTimeout(2000);
 
-    // Look for any team name indicators
-    const teamRows = page.locator("tr").or(page.locator("[class*='team']"));
+    // The leaderboard renders each team as a "standing-entry" (podium card or
+    // chasing-pack row) rather than a table row.
+    const teamRows = page.getByTestId("standing-entry");
     const rowCount = await teamRows.count();
 
     expect(rowCount).toBeGreaterThan(0);

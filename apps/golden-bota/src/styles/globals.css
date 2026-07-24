@@ -1,11 +1,27 @@
-/* styles/globals.css */
-@import 'tailwindcss/base';
-@import 'tailwindcss/components';
-@import 'tailwindcss/utilities';
+/* styles/globals.css — "Bota de Oro" engraved-trophy design system */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
-body {
-    font-family: 'Inter', sans-serif;
-  }
+:root {
+  /* Trophy-case palette */
+  --pitch: #0a0a0b; /* warm near-black — the case behind the trophy */
+  --pitch-raised: #16130c; /* raised panels / cards */
+  --pitch-line: #241f14; /* hairline borders between rows */
+
+  --bota-gold: #d4af37; /* metallic gold — primary */
+  --gold-bright: #f4d77e; /* specular highlight edge of engraving */
+  --gold-deep: #8c6a1a; /* shadow side of the engraving */
+
+  --bone: #ede6d6; /* aged-ivory body text on dark */
+  --bone-dim: #a49d8c; /* secondary text */
+
+  --silver: #c7ccd1; /* 2nd place medal */
+  --bronze: #b08d57; /* 3rd place medal */
+
+  --xfer-in: #7bb47f; /* transferred-in (muted jewel green) */
+  --xfer-out: #c56b6b; /* transferred-out (muted jewel red) */
+}
 
 html,
 body,
@@ -13,5 +29,147 @@ body,
   min-height: 100%;
   margin: 0;
   padding: 0;
-  background-color: black;
+}
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  color: var(--bone);
+  background-color: var(--pitch);
+  /* Spotlight vignette — a display-case light falling on the trophy */
+  background-image: radial-gradient(
+    120% 80% at 50% -10%,
+    rgba(212, 175, 55, 0.12) 0%,
+    rgba(212, 175, 55, 0.03) 30%,
+    transparent 60%
+  );
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---- Engraving type utilities ---- */
+.font-engrave {
+  font-family: "Cinzel", Georgia, serif;
+  letter-spacing: 0.04em;
+}
+
+.font-score {
+  font-family: "Oswald", "Arial Narrow", sans-serif;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+}
+
+/* An eyebrow label — small, tracked-out scoreboard voice */
+.eyebrow {
+  font-family: "Oswald", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.32em;
+  font-weight: 500;
+  color: var(--bota-gold);
+}
+
+/* The signature: goal tallies stamped into gold. A specular gradient clipped
+   into the glyphs, with a hairline dark drop below to read as engraved depth. */
+.engraved-gold {
+  font-family: "Oswald", sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  background: linear-gradient(
+    177deg,
+    var(--gold-bright) 0%,
+    var(--bota-gold) 42%,
+    var(--gold-deep) 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.55));
+}
+
+/* Gold text that isn't a big numeral (wordmark, headings) */
+.text-gold {
+  color: var(--bota-gold);
+}
+
+/* Hairline plaque frame — the beveled edge of an engraved plate */
+.plaque {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.02) 0%,
+    rgba(0, 0, 0, 0.25) 100%
+  );
+  background-color: var(--pitch-raised);
+  border: 1px solid rgba(212, 175, 55, 0.28);
+  border-radius: 4px;
+  box-shadow:
+    inset 0 1px 0 rgba(244, 215, 126, 0.12),
+    0 10px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* ---- Quality floor: focus, motion, scrollbar ---- */
+*:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: rgba(212, 175, 55, 0.3);
+  color: var(--bone);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--pitch);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--gold-deep);
+  border-radius: 8px;
+  border: 2px solid var(--pitch);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rise-in {
+  animation: rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Inline accordion: animate grid-template-rows between 0fr and 1fr so an
+   expanding roster slides open smoothly instead of snapping the rows below. */
+.expand-shell {
+  display: grid;
+  transition: grid-template-rows 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Ambient shimmer that travels across the wordmark once on load */
+@keyframes sheen {
+  0% {
+    background-position: -140% 0;
+  }
+  60%,
+  100% {
+    background-position: 240% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

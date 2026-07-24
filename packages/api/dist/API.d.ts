@@ -15,6 +15,7 @@ export interface DraftInfo {
     transfer_snake_order?: boolean;
     transferOrder?: string[];
     transfer_window_status?: string;
+    transfer_mode?: "standard" | "add_only";
     goals2025?: {
         [fantasyPlayerId: string]: number;
     };
@@ -105,6 +106,7 @@ export declare const updateDraftSettings: (leagueId: string, settings: {
     transfer_window_end?: string;
     transfer_window_status?: string;
     transfer_current_turn_team?: string;
+    transfer_mode?: "standard" | "add_only";
 }) => Promise<DraftInfo | null>;
 export declare const joinDraftSession: (leagueId: string, teamId: string) => Promise<any>;
 export declare const fetchActiveParticipants: (leagueId: string) => Promise<string[]>;

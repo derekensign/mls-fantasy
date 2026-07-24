@@ -64,7 +64,7 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
     <div className={isMobile ? "drawer-table" : ""}>
       {/* Transfer Actions Section */}
       {isTransferMode && (
-        <div className="p-4 bg-[#FFFFF0]">
+        <div className="p-4 bg-[var(--pitch-raised)]">
           <div className="space-y-2">
             {transferActions
               .filter(
@@ -146,7 +146,7 @@ const DraftedPlayersTable: React.FC<DraftedPlayersTableProps> = ({
                 </TableCell>
               </TableRow>
             </TableHead>
-            <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
+            <TableBody className="bg-[var(--pitch-raised)] divide-y divide-[#B8860B]">
               {draftedPlayers.map((draftedPlayer, index) => {
                 const player = players.find(
                   (p) => p.id.toString() === draftedPlayer.player_id

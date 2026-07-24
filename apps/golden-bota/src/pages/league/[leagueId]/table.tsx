@@ -4,14 +4,19 @@ import GoldenBootTable from "../../../components/GoldenBootTable";
 const LeagueTablePage: React.FC = () => {
   const { leagueId } = useRouter().query;
 
-  if (!leagueId) return <div>Loading league info...</div>;
+  if (!leagueId) {
+    return (
+      <div
+        className="font-score py-24 text-center"
+        style={{ color: "var(--bone-dim)", letterSpacing: "0.2em" }}
+      >
+        LOADING LEAGUE…
+      </div>
+    );
+  }
 
-  return (
-    <div>
-      <h1>League {leagueId} - Golden Boot Table</h1>
-      <GoldenBootTable />
-    </div>
-  );
+  // GoldenBootTable renders its own crest + heading from the league route.
+  return <GoldenBootTable />;
 };
 
 export default LeagueTablePage;

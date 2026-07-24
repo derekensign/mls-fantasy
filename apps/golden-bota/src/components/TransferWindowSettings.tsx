@@ -90,6 +90,11 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
   const [transferEndTime, setTransferEndTime] = useState<string>("");
   const [maxRounds, setMaxRounds] = useState<number>(2);
   const [isSnakeOrder, setIsSnakeOrder] = useState<boolean>(false);
+  // "standard" = managers drop then pick up; "add_only" = managers just add
+  // players each turn (no drop required, squads grow).
+  const [transferMode, setTransferMode] = useState<"standard" | "add_only">(
+    "standard"
+  );
   const [updating, setUpdating] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -163,6 +168,11 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
         setMaxRounds(extractValue(draftSettings.transfer_max_rounds) || 2);
         setIsSnakeOrder(
           extractValue(draftSettings.transfer_snake_order) || false
+        );
+        setTransferMode(
+          extractValue(draftSettings.transfer_mode) === "add_only"
+            ? "add_only"
+            : "standard"
         );
 
         // Initialize transfer window timing if available
@@ -326,6 +336,7 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
         // Transfer window not active - update all settings
         updateData.transfer_max_rounds = maxRounds;
         updateData.transfer_snake_order = isSnakeOrder;
+        updateData.transfer_mode = transferMode;
         updateData.transferOrder = transferOrderIds;
 
         // If start and end times are provided, include them and set status to active
@@ -443,6 +454,46 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
             InputProps={{ sx: { color: "white !important" } }}
           />
         </div>
+
+        {/* Transfer Mode */}
+        <FormControl fullWidth disabled={Boolean(isTransferWindowActive)}>
+          <InputLabel
+            id="transfer-mode-label"
+            sx={{ color: "white !important" }}
+          >
+            Transfer Mode
+          </InputLabel>
+          <Select
+            labelId="transfer-mode-label"
+            label="Transfer Mode"
+            value={transferMode}
+            onChange={(e) =>
+              setTransferMode(e.target.value as "standard" | "add_only")
+            }
+            sx={{
+              color: "white !important",
+              ".MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(255,255,255,0.5)",
+              },
+              ".MuiSvgIcon-root": { color: "white" },
+            }}
+          >
+            <MenuItem value="standard">
+              Standard — drop a player, then add one
+            </MenuItem>
+            <MenuItem value="add_only">
+              Add only — add players without dropping (squads grow)
+            </MenuItem>
+          </Select>
+          <Typography
+            variant="caption"
+            sx={{ color: "rgba(255,255,255,0.7)", mt: 0.5 }}
+          >
+            {transferMode === "add_only"
+              ? "Each manager adds a player per turn with no drop required. With 2 rounds, every squad grows by 2."
+              : "Each manager drops a player, then picks one up. Roster size stays the same."}
+          </Typography>
+        </FormControl>
 
         {/* Transfer Settings */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

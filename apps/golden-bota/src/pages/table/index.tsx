@@ -1,20 +1,10 @@
 import React from "react";
-import { Container } from "@mui/material";
 import GoldenBootTable from "../../components/GoldenBootTable";
 
+// The leaderboard carries its own crest, heading, and layout — this page is
+// just a transparent host so the trophy-case background shows through.
 function TablePage() {
-  return (
-    <Container
-      sx={{
-        py: 4,
-        backgroundColor: "#333",
-        minHeight: "100vh",
-        minWidth: "100vw",
-      }}
-    >
-      <GoldenBootTable />
-    </Container>
-  );
+  return <GoldenBootTable />;
 }
 
 export default TablePage;

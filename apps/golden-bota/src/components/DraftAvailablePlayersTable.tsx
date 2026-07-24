@@ -48,6 +48,7 @@ interface DraftAvailablePlayersTableProps {
   }; // Add getPlayerOwnership prop
   isPickingUp?: boolean; // Add loading state for pickup button
   testMode?: boolean; // Test mode: allows drafting as any team
+  isAddOnlyMode?: boolean; // Add-only transfer mode: pick up without a prior drop
 }
 
 const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
@@ -65,6 +66,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   getPlayerOwnership, // Add getPlayerOwnership prop
   isPickingUp = false, // Default to false
   testMode = false, // Default to false
+  isAddOnlyMode = false, // Default to false (standard drop-then-pickup)
 }) => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [teamFilter, setTeamFilter] = useState<string>("all");
@@ -162,7 +164,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
         return ownership.ownerName || "Unknown Team";
       }
 
-      return "PICK UP";
+      return isAddOnlyMode ? "ADD" : "PICK UP";
     }
 
     if (mode === "transfer") {
@@ -186,7 +188,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
         return `Owned by ${ownerTeam?.TeamName || "Unknown"}`;
       }
 
-      return "PICK UP";
+      return isAddOnlyMode ? "ADD" : "PICK UP";
     }
     // In draft mode, always show DRAFT
     return "DRAFT";
@@ -212,8 +214,11 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
 
       // For available players, only enable if:
       // 1. It's user's turn AND
-      // 2. User has already dropped a player (selectedDropPlayer exists)
-      return !isUserTurn || !selectedDropPlayer || isPickingUp;
+      // 2. In standard mode, the user has already dropped a player
+      //    (selectedDropPlayer exists). Add-only mode has no drop, so a
+      //    dropped player is not required.
+      const needsDrop = !isAddOnlyMode && !selectedDropPlayer;
+      return !isUserTurn || needsDrop || isPickingUp;
     }
 
     if (mode === "transfer") {
@@ -471,7 +476,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
               </TableCell>
             </TableRow>
           </TableHead>
-          <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
+          <TableBody className="bg-[var(--pitch-raised)] divide-y divide-[#B8860B]">
             {players.map((player) => {
               // Check if the player has been drafted using the draftedPlayers prop.
               const draftedRecord = draftedPlayers.find(

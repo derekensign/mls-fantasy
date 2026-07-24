@@ -96,7 +96,7 @@ const fetchUserDetails = async (email, leagueId) => {
 exports.fetchUserDetails = fetchUserDetails;
 // Existing function for fetching draft data using Axios.
 const getDraftSettings = async (leagueId) => {
-    var _a;
+    var _a, _b;
     const response = await axios_1.default.get(`${BASE_URL}/league/${leagueId}/draft-settings`);
     const data = response.data;
     // Convert incoming data to match DraftInfo.
@@ -120,6 +120,10 @@ const getDraftSettings = async (leagueId) => {
             ? data.transferOrder.map((item) => (item.S ? item.S : item))
             : [],
         transfer_window_status: data.transfer_window_status || "",
+        // Default to "standard" (drop-then-pickup) when the league hasn't opted into add-only.
+        transfer_mode: (((_b = data.transfer_mode) === null || _b === void 0 ? void 0 : _b.S) || data.transfer_mode) === "add_only"
+            ? "add_only"
+            : "standard",
         // 2025 standings for draft order display
         goals2025: data.goals2025 || {},
     };

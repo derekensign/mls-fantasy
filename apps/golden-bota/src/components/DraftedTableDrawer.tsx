@@ -62,7 +62,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
             borderBottom: 1,
             borderColor: "divider",
             borderRadius: isMobile ? 0 : "inherit",
-            backgroundColor: "#FFFFF0 ",
+            backgroundColor: "var(--pitch-raised)",
           }}
         >
           <Typography variant="h6">

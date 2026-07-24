@@ -1,208 +1,210 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useAuth } from "react-oidc-context";
-import useUserStore from "../stores/useUserStore"; // Import the user store
 import { useRouter } from "next/router";
+import useUserStore from "../stores/useUserStore";
 import { useTransferWindowStatus } from "../hooks/useTransferWindowStatus";
 
 function Navbar({ auth }: { auth: ReturnType<typeof useAuth> }) {
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
-  const { leagueId } = router.query;
   const { isTransferWindowActive } = useTransferWindowStatus();
+  const { userDetails } = useUserStore();
 
   const handleLogin = () => auth.signinRedirect();
   const handleLogout = () => {
     const clientId = "7b2ljliksvl2pn7gadjrn90e1a";
     const logoutUri = window.location.origin;
-    const cognitoDomain = "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com";
-
+    const cognitoDomain =
+      "https://us-east-1d6opuwwml.auth.us-east-1.amazoncognito.com";
     const logoutUrl = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(
       logoutUri
     )}`;
-
     auth.removeUser();
     window.location.href = logoutUrl;
   };
 
-  // Access user details from the store
-  const { userDetails } = useUserStore();
-
-  // If the user is authenticated and has a LeagueId, link to /league/[LeagueId]/draft
-  // Otherwise, link to the join/create page at /league
   const leagueLink =
     auth.isAuthenticated && userDetails?.leagueId
       ? `/league/${userDetails.leagueId}`
       : "/league";
 
-  const toggleMenu = () => {
-    setIsOpen(!isOpen);
-  };
+  // Nav destinations. Signed-out visitors see none (the hero carries the CTA);
+  // signed-in users without a profile yet get nudged to complete it.
+  const links = !auth.isAuthenticated
+    ? []
+    : userDetails
+    ? [
+        { href: leagueLink, label: "League" },
+        { href: "/MyTeam", label: "My Team" },
+        { href: `/league/${userDetails.leagueId}/table`, label: "Table" },
+        { href: `/league/${userDetails.leagueId}/draft`, label: "Draft" },
+        ...(isTransferWindowActive
+          ? [
+              {
+                href: `/league/${userDetails.leagueId}/transfer`,
+                label: "Transfer",
+              },
+            ]
+          : []),
+      ]
+    : [{ href: "/MyTeam", label: "Complete Your Profile" }];
+
+  const isActive = (href: string) =>
+    router.asPath === href || router.asPath.startsWith(href + "/");
+
+  const NavLink = ({
+    href,
+    label,
+    onClick,
+  }: {
+    href: string;
+    label: string;
+    onClick?: () => void;
+  }) => (
+    <Link
+      href={href}
+      onClick={onClick}
+      className="font-score transition-colors duration-200"
+      style={{
+        color: isActive(href) ? "var(--bota-gold)" : "var(--bone-dim)",
+        letterSpacing: "0.12em",
+        textTransform: "uppercase",
+        fontSize: "0.8rem",
+        paddingBottom: 2,
+        borderBottom: isActive(href)
+          ? "1px solid var(--bota-gold)"
+          : "1px solid transparent",
+      }}
+    >
+      {label}
+    </Link>
+  );
 
   return (
-    <header className="bg-[#B8860B] text-white p-3 sm:p-4 shadow-md sticky top-0 z-50 w-full">
-      <nav className="container flex justify-between items-center px-4 w-full max-w-7xl mx-auto">
-        {/* App Name */}
-
-        {/* Hamburger button */}
-        <button
-          className="md:hidden text-white focus:outline-none mr-4"
-          onClick={toggleMenu}
+    <header
+      className="sticky top-0 z-50 w-full"
+      style={{
+        background: "rgba(10,10,11,0.82)",
+        backdropFilter: "blur(10px)",
+        borderBottom: "1px solid rgba(212,175,55,0.22)",
+      }}
+    >
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+        {/* Wordmark */}
+        <Link
+          href="/"
+          className="font-engrave text-gold shrink-0"
+          style={{ fontSize: "1.15rem", fontWeight: 700, letterSpacing: "0.08em" }}
         >
-          <svg
-            className="w-6 h-6"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            {isOpen ? (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            ) : (
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M4 6h16M4 12h16M4 18h16"
-              />
-            )}
-          </svg>
-        </button>
-
-        <Link href="/" className="text-white font-bold text-xl">
-          Golden Bota
+          Golden&nbsp;Bota
         </Link>
 
-        {/* Desktop menu */}
-        <div className="hidden md:flex space-x-4 ml-auto pr-4">
-          {userDetails ? (
-            <>
-              <Link
-                href={leagueLink}
-                className="text-white hover:text-gray-300"
-              >
-                League
-              </Link>
-              <Link href="/MyTeam" className="text-white hover:text-gray-300">
-                My Team
-              </Link>
-              <Link
-                href={`/league/${userDetails.leagueId}/table`}
-                className="text-white hover:text-gray-300"
-              >
-                Table
-              </Link>
-              <Link
-                href={`/league/${userDetails.leagueId}/draft`}
-                className="text-white hover:text-gray-300"
-              >
-                Draft
-              </Link>
-              {isTransferWindowActive && (
-                <Link
-                  href={`/league/${userDetails.leagueId}/transfer`}
-                  className="text-white hover:text-gray-300"
-                >
-                  Transfer
-                </Link>
-              )}
-            </>
-          ) : (
-            <Link href="/MyTeam" className="text-white hover:text-gray-300">
-              Complete Your Profile
-            </Link>
-          )}
+        {/* Desktop links */}
+        <div className="hidden items-center gap-6 md:flex">
+          {links.map((l) => (
+            <NavLink key={l.href} href={l.href} label={l.label} />
+          ))}
         </div>
 
-        {/* Mobile menu */}
-        <div
-          className={`${
-            isOpen ? "block" : "hidden"
-          } md:hidden fixed left-0 w-full top-16 bg-black min-h-fit max-h-[1/4] z-40`}
-        >
-          <div className="flex flex-col space-y-2 p-3 w-full">
-            {userDetails ? (
-              <>
-                <Link
-                  href={leagueLink}
-                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                  onClick={() => setIsOpen(false)}
-                >
-                  League
-                </Link>
-                <Link
-                  href="/MyTeam"
-                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                  onClick={() => setIsOpen(false)}
-                >
-                  My Team
-                </Link>
-                <Link
-                  href={`/league/${userDetails.leagueId}/table`}
-                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Table
-                </Link>
-                <Link
-                  href={`/league/${userDetails.leagueId}/draft`}
-                  className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                  onClick={() => setIsOpen(false)}
-                >
-                  Draft
-                </Link>
-                {isTransferWindowActive && (
-                  <Link
-                    href={`/league/${userDetails.leagueId}/transfer`}
-                    className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Transfer
-                  </Link>
-                )}
-              </>
-            ) : (
-              <Link
-                href="/MyTeam"
-                className="text-white hover:text-gray-300 text-lg py-1 w-full"
-                onClick={() => setIsOpen(false)}
-              >
-                Complete Your Profile
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Authentication Buttons */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
+        {/* Right side: auth */}
+        <div className="flex items-center gap-3">
           {auth.isAuthenticated ? (
             <>
-              <div className="flex items-center space-x-2 sm:space-x-4">
-                <span className="font-semibold text-sm sm:hidden lg:block">
-                  Hi, {userDetails?.fantasyPlayerName?.split(" ")[0] || "User"}!
+              <span
+                className="hidden text-sm sm:inline"
+                style={{ color: "var(--bone-dim)" }}
+              >
+                Hi,{" "}
+                <span style={{ color: "var(--bota-gold)" }}>
+                  {userDetails?.fantasyPlayerName?.split(" ")[0] || "manager"}
                 </span>
-                <button
-                  onClick={handleLogout}
-                  className="bg-white text-black px-2 py-1 sm:px-4 sm:py-2 rounded hover:bg-opacity-80"
-                >
-                  Log Out
-                </button>
-              </div>
+              </span>
+              <button
+                onClick={handleLogout}
+                className="font-score px-3 py-1.5 text-xs transition-colors duration-200"
+                style={{
+                  color: "var(--bone)",
+                  border: "1px solid rgba(212,175,55,0.4)",
+                  borderRadius: 4,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                }}
+              >
+                Log Out
+              </button>
             </>
           ) : (
             <button
               onClick={handleLogin}
-              className="bg-white text-black px-2 py-1 sm:px-4 sm:py-2 rounded hover:bg-opacity-80"
+              className="font-score px-4 py-1.5 text-xs transition-transform duration-200 hover:-translate-y-0.5"
+              style={{
+                color: "var(--pitch)",
+                background:
+                  "linear-gradient(180deg, var(--gold-bright), var(--bota-gold) 60%, var(--gold-deep))",
+                borderRadius: 4,
+                fontWeight: 600,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+              }}
             >
               Log In
             </button>
           )}
+
+          {/* Hamburger */}
+          <button
+            className="text-gold md:hidden"
+            aria-label="Toggle menu"
+            aria-expanded={isOpen}
+            onClick={() => setIsOpen((v) => !v)}
+          >
+            <svg
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.8}
+                d={isOpen ? "M6 18L18 6M6 6l12 12" : "M4 7h16M4 12h16M4 17h16"}
+              />
+            </svg>
+          </button>
         </div>
       </nav>
+
+      {/* Mobile menu */}
+      {isOpen && (
+        <div
+          className="md:hidden"
+          style={{
+            background: "rgba(10,10,11,0.97)",
+            borderTop: "1px solid rgba(212,175,55,0.18)",
+          }}
+        >
+          <div className="flex flex-col gap-1 px-4 py-3">
+            {links.map((l) => (
+              <Link
+                key={l.href}
+                href={l.href}
+                onClick={() => setIsOpen(false)}
+                className="font-score py-2"
+                style={{
+                  color: isActive(l.href) ? "var(--bota-gold)" : "var(--bone)",
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  fontSize: "0.9rem",
+                }}
+              >
+                {l.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
     </header>
   );
 }

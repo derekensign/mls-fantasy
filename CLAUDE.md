@@ -144,12 +144,40 @@ The transfer window is the most complex part of the system:
 - Tracks goals at drop/pickup time for accurate scoring
 - State stored in `Draft` table with `transfer_window_status`, `transferOrder`, `activeTransfers`
 
+#### Transfer Mode (`transfer_mode`)
+Commissioner-selectable per league, stored on the `Draft` record. Default `"standard"`.
+- **`standard`**: each turn a manager drops a player, then picks one up (roster size fixed).
+- **`add_only`**: each turn a manager just adds a player — no drop required, squads grow.
+  With `transfer_max_rounds = 2` (snake), every manager adds 2 players over the window.
+
+The add-only path required **no backend `pickupPlayer.js` change** — that Lambda already
+creates a fresh League record for a never-drafted player. The drop-before-pickup rule was
+enforced only on the frontend (`transfer.tsx` pickup guard + `DraftAvailablePlayersTable`
+`!selectedDropPlayer` gate); add-only mode bypasses both via `isAddOnlyMode`. Mode is
+plumbed through `getTransferWindow.js` (returns `mode`) and `updateDraftSettings.js`
+(validates + persists `transfer_mode`), surfaced in `TransferWindowInfo.mode` and the
+`DraftInfo.transfer_mode` API type, and toggled in the commissioner `TransferWindowSettings`.
+Set a league with `backend/goldenbota2025/OneTime/setLeague1AddOnlyMode.js` (`--standard`/`--dry-run`).
+
 ### Authentication
 - AWS Cognito Hosted UI handles OAuth flows
 - Tokens stored in localStorage, auto-refresh 60s before expiry
 - **Cognito User Pool**: `us-east-1_D6OPuwWML`
 - **App Client ID**: `7b2ljliksvl2pn7gadjrn90e1a`
-- **Session duration**: Refresh token set to 30 days (updated Feb 2026)
+- **Session duration**: Refresh token 30 days; access/ID tokens 60 minutes
+- **Do NOT add `offline_access` scope** — Cognito rejects it (`ScopeDoesNotExistException`).
+  Cognito auto-issues a refresh token for the auth-code flow regardless of scopes.
+- **Startup renewal (the real login-persistence fix)**: `react-oidc-context` reports
+  `isAuthenticated=false` on page load whenever the stored access token has already
+  expired, and `automaticSilentRenew` only fires while the tab is open with a still-valid
+  token — never on startup. `UserInitializer` in `_app.tsx` calls `signinSilent()` once on
+  startup when a stored user has `expired===true` but still holds a `refresh_token`, so
+  returning users stay logged in for the full refresh-token lifetime.
+- **Dead-session handling**: If the stored refresh token is itself expired, Cognito
+  rejects the startup `signinSilent()` with `invalid_grant`. The catch calls
+  `auth.removeUser()` to purge the dead session, and `index.tsx` does NOT block the whole
+  page on `auth.error` — the signed-out hero renders with a subtle "session expired" note.
+  Never surface a background-renewal failure as a blocking page error.
 
 ## Season Management Scripts
 

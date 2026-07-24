@@ -41,20 +41,37 @@ async function fetchPlayers2025Map() {
       scanParams.ExclusiveStartKey = scanResult.LastEvaluatedKey;
     } while (scanResult.LastEvaluatedKey);
 
-    // Create a lookup map by player name (normalized)
-    const playerMap = {};
+    // Create lookup maps by player name (normalized)
+    // Primary: keyed by "name|team" to disambiguate players with the same name
+    // Fallback: keyed by name only (used when no name+team match exists)
+    const byNameAndTeam = {};
+    const byNameOnly = {};
     items.forEach((player) => {
-      const key = player.name?.toLowerCase().trim();
-      if (key) {
-        playerMap[key] = {
-          id: player.id,
-          goals_2025: player.goals_2025 || 0,
-        };
+      const name = player.name
+        ?.toLowerCase()
+        .trim()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+      const team = player.team?.toLowerCase().trim() || "";
+      const entry = {
+        id: player.id,
+        goals_2025: player.goals_2025 || 0,
+      };
+      if (name) {
+        const compositeKey = `${name}|${team}`;
+        byNameAndTeam[compositeKey] = entry;
+        // Only set name-only if not already taken (avoids collisions like two Ojedas)
+        if (!byNameOnly[name]) {
+          byNameOnly[name] = entry;
+        } else {
+          // Mark as ambiguous so we don't use name-only for this name
+          byNameOnly[name] = "AMBIGUOUS";
+        }
       }
     });
 
     console.log(`   Found ${items.length} players in Players_2025`);
-    return playerMap;
+    return { byNameAndTeam, byNameOnly };
   } catch (err) {
     console.log("   ⚠️ Could not fetch Players_2025:", err.message);
     return {};
@@ -86,7 +103,7 @@ async function fetchAndInsertPlayers2026() {
   console.log("🚀 Starting MLS 2026 Player Data Pipeline\n");
 
   // Step 1: Get historical 2025 data for reference
-  const players2025Map = await fetchPlayers2025Map();
+  const { byNameAndTeam, byNameOnly } = await fetchPlayers2025Map();
 
   // Step 2: Scrape current player rosters from MLS team websites
   console.log("\n📊 Scraping player rosters from MLS team websites...\n");
@@ -103,8 +120,18 @@ async function fetchAndInsertPlayers2026() {
   let errorCount = 0;
 
   for (const player of scrapedPlayers) {
-    // Look up historical goals from 2025
-    const historical = players2025Map[player.name?.toLowerCase().trim()];
+    // Look up historical goals from 2025 (prefer name+team match to avoid collisions)
+    const normalizedName = player.name
+      ?.toLowerCase()
+      .trim()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    const normalizedTeam = player.team?.toLowerCase().trim() || "";
+    const compositeKey = `${normalizedName}|${normalizedTeam}`;
+    const nameOnlyMatch = byNameOnly[normalizedName];
+    const historical =
+      byNameAndTeam[compositeKey] ||
+      (nameOnlyMatch !== "AMBIGUOUS" ? nameOnlyMatch : undefined);
 
     // Use the 2025 ID if available, otherwise use scraped ID
     const playerId = historical?.id || player.id;

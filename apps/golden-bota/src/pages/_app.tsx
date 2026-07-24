@@ -1,9 +1,11 @@
-import React, { useEffect, useState, ReactNode } from "react";
+import React, { useEffect, useRef, useState, ReactNode } from "react";
 import type { AppProps } from "next/app";
 import { AuthProvider, useAuth } from "react-oidc-context";
 import { WebStorageStateStore } from "oidc-client-ts";
+import { ThemeProvider } from "@mui/material";
 import Layout from "../components/Layout";
 import useUserStore from "../stores/useUserStore"; // Import the user store
+import botaTheme from "../config/muiTheme";
 import "../styles/globals.css";
 import "../styles/tailwind.css";
 import { COGNITO_CONFIG } from "../config/authConfig";
@@ -42,6 +44,50 @@ interface UserInitializerProps {
 const UserInitializer: React.FC<UserInitializerProps> = ({ children }) => {
   const auth = useAuth();
   const { fetchUserDetails, clearUserDetails } = useUserStore();
+  const hasAttemptedSilentRenewalOnStartup = useRef(false);
+
+  // Cognito issues a refresh token (valid 30 days) for the auth-code flow, but
+  // access/ID tokens expire after 60 minutes. On a fresh page load the OIDC
+  // provider reports isAuthenticated=false whenever the stored access token has
+  // already expired, and automaticSilentRenew only fires while the tab is open
+  // with a still-valid token — never on startup. Without this effect, any user
+  // returning after their 60-minute token lapsed is treated as logged out even
+  // though a valid refresh token is sitting in storage. Exchange it once on
+  // startup so sessions persist for the full refresh-token lifetime.
+  useEffect(() => {
+    if (
+      auth.isLoading ||
+      auth.isAuthenticated ||
+      auth.activeNavigator ||
+      hasAttemptedSilentRenewalOnStartup.current
+    ) {
+      return;
+    }
+
+    const storedUser = auth.user;
+    const hasExpiredSessionWithRefreshToken =
+      Boolean(storedUser?.refresh_token) && storedUser?.expired === true;
+
+    if (hasExpiredSessionWithRefreshToken) {
+      hasAttemptedSilentRenewalOnStartup.current = true;
+      auth.signinSilent().catch((error) => {
+        // A dead/expired refresh token (Cognito returns `invalid_grant`) means
+        // the stored session can't be revived. Purge it so the app falls back
+        // to a clean signed-out state instead of surfacing a token-exchange
+        // error to the user, who then has to sign in again anyway.
+        console.warn("Startup token renewal failed; clearing stale session:", error);
+        auth.removeUser().catch((removeError) => {
+          console.error("Failed to clear stale session:", removeError);
+        });
+      });
+    }
+  }, [
+    auth.isLoading,
+    auth.isAuthenticated,
+    auth.activeNavigator,
+    auth.user,
+    auth,
+  ]);
 
   useEffect(() => {
     const fetchAndSetUserDetails = async () => {
@@ -80,17 +126,33 @@ const MyApp: React.FC<AppProps> = ({ Component, pageProps }: AppProps) => {
   }, []);
 
   if (!isInitialized) {
-    return <div>Loading...</div>;
+    return (
+      <div
+        className="font-score"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          color: "var(--bone-dim)",
+          letterSpacing: "0.24em",
+        }}
+      >
+        POLISHING THE TROPHY…
+      </div>
+    );
   }
 
   return (
-    <AuthProvider {...cognitoAuthConfig}>
-      <UserInitializer>
-        <Layout>
-          <Component {...pageProps} />
-        </Layout>
-      </UserInitializer>
-    </AuthProvider>
+    <ThemeProvider theme={botaTheme}>
+      <AuthProvider {...cognitoAuthConfig}>
+        <UserInitializer>
+          <Layout>
+            <Component {...pageProps} />
+          </Layout>
+        </UserInitializer>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

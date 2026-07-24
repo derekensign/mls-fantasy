@@ -79,6 +79,8 @@ exports.handler = async (event) => {
       activeTransfers: draftRecord.activeTransfers || {},
       finishedTransferringTeams: draftRecord.finishedTransferringTeams || [],
       snakeOrder: draftRecord.transfer_snake_order || false,
+      // "add_only" lets managers add players without dropping; default is "standard".
+      mode: draftRecord.transfer_mode === "add_only" ? "add_only" : "standard",
     };
 
     // Check if transfer window is currently active based on time comparison only

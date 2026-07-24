@@ -212,7 +212,7 @@ const DraftPage: React.FC = () => {
                   </TableCell>
                 </TableRow>
               </TableHead>
-              <TableBody className="bg-[#FFFFF0] divide-y divide-[#B8860B]">
+              <TableBody className="bg-[var(--pitch-raised)] divide-y divide-[#B8860B]">
                 {filteredPlayers.map((player) => (
                   <TableRow
                     key={player.id}

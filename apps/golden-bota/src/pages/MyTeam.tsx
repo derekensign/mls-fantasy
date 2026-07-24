@@ -228,34 +228,60 @@ export default function MyTeam() {
 
   if (!auth.isAuthenticated) {
     return (
-      <div className="text-center">
-        <h1 className="pt-4 text-white">
-          You must log in to view your profile.
-        </h1>
+      <div className="mx-auto max-w-md px-5 py-24 text-center">
+        <p className="font-engrave text-gold text-xl">Sign in to view your squad</p>
       </div>
     );
   }
 
   if (loading) {
-    return <div className="text-center mt-8">Loading profile data...</div>;
+    return (
+      <div
+        className="font-score py-24 text-center"
+        style={{ color: "var(--bone-dim)", letterSpacing: "0.2em" }}
+      >
+        LOADING YOUR SQUAD…
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center mt-8 text-red-600">{error}</div>;
+    return (
+      <div className="mx-auto max-w-md px-5 py-16">
+        <div className="plaque px-6 py-8 text-center">
+          <p className="font-engrave text-gold text-lg">Couldn’t load your team</p>
+          <p className="mt-2 text-sm" style={{ color: "var(--bone-dim)" }}>
+            {error}
+          </p>
+        </div>
+      </div>
+    );
   }
 
+  const fieldClass =
+    "w-full rounded px-3 py-2 bg-[var(--pitch)] border border-[var(--gold-deep)] text-[var(--bone)] placeholder:text-[var(--bone-dim)] focus:border-[var(--bota-gold)] outline-none";
+  const labelClass = "eyebrow block mb-1";
+
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-3xl font-bold text-center mb-6">My Profile</h1>
+    <div className="mx-auto max-w-5xl px-4 py-8 sm:py-12">
+      <div className="text-center">
+        <p className="eyebrow" style={{ fontSize: "0.7rem" }}>Manager</p>
+        <h1
+          className="font-engrave text-gold mt-1"
+          style={{ fontSize: "clamp(1.8rem, 5vw, 2.6rem)", fontWeight: 700 }}
+        >
+          My Profile
+        </h1>
+      </div>
       {team && (
-        <div className="max-w-3xl mx-auto bg-[#F0E68C] p-6 rounded-lg shadow-md mb-8">
-          <h2 className="text-2xl font-semibold mb-4">
+        <div className="plaque mx-auto mt-8 max-w-2xl p-6">
+          <h2 className="font-engrave text-gold text-xl mb-5">
             {team.teamName ? "Update Profile" : "Complete Your Profile"}
           </h2>
           <form onSubmit={handleSubmit}>
             {/* Email Address (read-only) */}
             <div className="mb-4">
-              <label className="block font-semibold mb-1" htmlFor="email">
+              <label className={labelClass} htmlFor="email">
                 Email Address
               </label>
               <input
@@ -264,12 +290,12 @@ export default function MyTeam() {
                 type="email"
                 value={auth.user!.profile.email ?? ""}
                 readOnly
-                className="w-full p-2 border rounded bg-gray-100"
+                className={`${fieldClass} opacity-70`}
               />
             </div>
             {/* Team Name */}
             <div className="mb-4">
-              <label className="block font-semibold mb-1" htmlFor="teamName">
+              <label className={labelClass} htmlFor="teamName">
                 Team Name *
               </label>
               <input
@@ -279,12 +305,12 @@ export default function MyTeam() {
                 value={team.teamName}
                 onChange={handleTeamNameChange}
                 required
-                className="w-full p-2 border rounded"
+                className={fieldClass}
               />
             </div>
             {/* Player Name */}
             <div className="mb-4">
-              <label className="block font-semibold mb-1" htmlFor="playerName">
+              <label className={labelClass} htmlFor="playerName">
                 Player Name *
               </label>
               <input
@@ -295,12 +321,12 @@ export default function MyTeam() {
                 onChange={handlePlayerNameChange}
                 required
                 placeholder="e.g. John Doe"
-                className="w-full p-2 border rounded"
+                className={fieldClass}
               />
             </div>
             {/* Team Logo */}
-            <div className="mb-4">
-              <label className="block font-semibold mb-1" htmlFor="teamLogo">
+            <div className="mb-5">
+              <label className={labelClass} htmlFor="teamLogo">
                 Team Logo (optional)
               </label>
               <input
@@ -309,7 +335,7 @@ export default function MyTeam() {
                 type="file"
                 accept="image/*"
                 onChange={handleLogoChange}
-                className="w-full"
+                className="w-full text-sm text-[var(--bone-dim)] file:mr-3 file:rounded file:border-0 file:bg-[var(--gold-deep)] file:px-3 file:py-1.5 file:text-[var(--bone)]"
               />
               {team.teamLogo && (
                 <Image
@@ -317,17 +343,24 @@ export default function MyTeam() {
                   alt="Team Logo"
                   width={200}
                   height={200}
-                  className="mt-2 h-20"
+                  className="mt-2 h-20 w-auto"
                 />
               )}
             </div>
             <button
               type="submit"
               disabled={saving}
-              className="bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded"
+              className="font-score px-7 py-2.5 text-sm uppercase tracking-wider transition-transform duration-200 hover:-translate-y-0.5 disabled:opacity-60"
+              style={{
+                color: "var(--pitch)",
+                background:
+                  "linear-gradient(180deg, var(--gold-bright), var(--bota-gold) 60%, var(--gold-deep))",
+                borderRadius: 4,
+                fontWeight: 600,
+              }}
             >
               {saving
-                ? "Saving..."
+                ? "Saving…"
                 : team.teamName
                 ? "Update Profile"
                 : "Complete Profile"}
@@ -338,57 +371,82 @@ export default function MyTeam() {
 
       {/* Render team roster */}
       {team && team.players && (
-        <div className="max-w-5xl mx-auto bg-[#B8860B] text-black rounded-lg p-4 mb-4 shadow-md">
-          <h2 className="text-2xl font-semibold">{team.teamName}</h2>
-          <p className="text-lg">Total Goals: {team.totalGoals}</p>
-          <h3 className="text-xl mt-4 mb-2">Players</h3>
+        <div className="plaque mx-auto mt-8 max-w-3xl overflow-hidden">
+          <div className="flex items-end justify-between px-5 pt-5">
+            <div>
+              <div className="eyebrow" style={{ fontSize: "0.6rem" }}>Squad</div>
+              <h2 className="font-engrave text-gold text-2xl">{team.teamName}</h2>
+            </div>
+            <div className="text-right">
+              <div className="engraved-gold text-4xl leading-none">
+                {team.totalGoals}
+              </div>
+              <div className="eyebrow" style={{ fontSize: "0.55rem" }}>Total goals</div>
+            </div>
+          </div>
 
-          {/* Enhanced table with transfer status */}
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse border border-gray-400">
+          <div className="mt-4 overflow-x-auto">
+            <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#8B7355]">
-                  <th className="border border-gray-400 px-4 py-2 text-left">
-                    Player Name
-                  </th>
-                  <th className="border border-gray-400 px-4 py-2 text-center">
-                    Transfer Status
-                  </th>
-                  <th className="border border-gray-400 px-4 py-2 text-center">
-                    Goals (After Joining)
-                  </th>
-                  <th className="border border-gray-400 px-4 py-2 text-center">
-                    Total Goals (2025)
-                  </th>
+                <tr
+                  className="eyebrow"
+                  style={{ fontSize: "0.58rem", color: "var(--bota-gold)" }}
+                >
+                  <th className="px-5 py-2 text-left font-medium">Player</th>
+                  <th className="px-3 py-2 text-center font-medium">Status</th>
+                  <th className="px-3 py-2 text-center font-medium">Since joining</th>
+                  <th className="px-5 py-2 text-center font-medium">Season</th>
                 </tr>
               </thead>
               <tbody>
-                {team.players.map((player: Player, idx: number) => (
-                  <tr key={idx} className="hover:bg-[#A0956B]">
-                    <td className="border border-gray-400 px-4 py-2 font-medium">
-                      {player.PlayerName}
-                    </td>
-                    <td className="border border-gray-400 px-4 py-2 text-center">
-                      <span
-                        className={`px-2 py-1 rounded text-sm ${
-                          player.TransferStatus === "Transferred In"
-                            ? "bg-green-200 text-green-800"
-                            : player.TransferStatus === "Transferred Out"
-                            ? "bg-red-200 text-red-800"
-                            : "bg-gray-200 text-gray-600"
-                        }`}
+                {team.players.map((player: Player, idx: number) => {
+                  const status = player.TransferStatus;
+                  const color =
+                    status === "Transferred In"
+                      ? "var(--xfer-in)"
+                      : status === "Transferred Out"
+                      ? "var(--xfer-out)"
+                      : "var(--bone-dim)";
+                  return (
+                    <tr
+                      key={idx}
+                      className="border-t"
+                      style={{ borderColor: "var(--pitch-line)" }}
+                    >
+                      <td className="px-5 py-2.5" style={{ color: "var(--bone)" }}>
+                        {player.PlayerName}
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span
+                          className="font-score"
+                          style={{
+                            padding: "1px 8px",
+                            borderRadius: 999,
+                            border: `1px solid ${color}`,
+                            color,
+                            fontSize: "0.6rem",
+                            letterSpacing: "0.1em",
+                            textTransform: "uppercase",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {status || "Original"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className="engraved-gold text-lg">
+                          {player.GoalsAfterJoining ?? player.Goals}
+                        </span>
+                      </td>
+                      <td
+                        className="px-5 py-2.5 text-center"
+                        style={{ color: "var(--bone-dim)" }}
                       >
-                        {player.TransferStatus || "Original"}
-                      </span>
-                    </td>
-                    <td className="border border-gray-400 px-4 py-2 text-center font-bold">
-                      {player.GoalsAfterJoining ?? player.Goals}
-                    </td>
-                    <td className="border border-gray-400 px-4 py-2 text-center text-gray-600">
-                      {player.Goals}
-                    </td>
-                  </tr>
-                ))}
+                        {player.Goals}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -396,7 +454,9 @@ export default function MyTeam() {
       )}
 
       {!team && !loading && (
-        <div className="text-center mt-8">No team data available.</div>
+        <div className="mt-10 text-center" style={{ color: "var(--bone-dim)" }}>
+          No team data available.
+        </div>
       )}
     </div>
   );

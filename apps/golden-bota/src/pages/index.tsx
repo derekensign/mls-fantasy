@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { useRouter } from "next/router";
-import { Box, Typography, Button } from "@mui/material";
+import Image from "next/image";
+import FiligreeDivider from "../components/FiligreeDivider";
 
 function TeamHome() {
   const auth = useAuth();
   const router = useRouter();
-  const [loadingTeam, setLoadingTeam] = useState(false);
   const [redirected, setRedirected] = useState(false);
 
   useEffect(() => {
@@ -16,95 +16,188 @@ function TeamHome() {
     }
   }, [auth.isAuthenticated, redirected, router]);
 
-  const defaultBoxStyles = {
-    p: 4,
-    backgroundColor: "black",
-    borderRadius: 2,
-    boxShadow: 3,
-    textAlign: "center",
-    color: "white",
-    maxWidth: "600px",
-    mx: "auto", // centers horizontally
-  };
-
-  // Common button style using our gold color
-  const buttonStyle = {
-    mt: 1,
-    mb: 1,
-    borderColor: "#B8860B",
-    color: "#B8860B",
-    "&:hover": { backgroundColor: "#B8860B", color: "black" },
-  };
-
+  // ---- Loading / error / post-auth states --------------------------------
   if (auth.isLoading) {
     return (
-      <Box sx={defaultBoxStyles}>
-        <Typography variant="h5">Loading authentication...</Typography>
-      </Box>
-    );
-  }
-
-  if (auth.error) {
-    return (
-      <Box sx={defaultBoxStyles}>
-        <Typography variant="h5">Error: {auth.error.message}</Typography>
-      </Box>
-    );
-  }
-
-  if (!auth.isAuthenticated) {
-    return (
-      <Box sx={defaultBoxStyles}>
-        <Typography variant="h3">Welcome to MLS Fantasy</Typography>
-        <Typography variant="h6">
-          If you already have an account, sign in to view your team standings.
-        </Typography>
-        <Button
-          variant="outlined"
-          onClick={() => auth.signinRedirect()}
-          sx={buttonStyle}
+      <CenterStage>
+        <p
+          className="font-score"
+          style={{ color: "var(--bone-dim)", letterSpacing: "0.24em" }}
         >
-          Sign In
-        </Button>
-        <Typography variant="body1">or</Typography>
-        <Button
-          variant="outlined"
-          onClick={() => {
-            const signupUrl = process.env.NEXT_PUBLIC_COGNITO_SIGNUP_URL;
-            if (signupUrl) {
-              window.location.href = signupUrl;
-            } else {
-              console.error("NEXT_PUBLIC_COGNITO_SIGNUP_URL is not defined");
-            }
-          }}
-          sx={buttonStyle}
-        >
-          Sign Up
-        </Button>
-        <Box sx={{ borderTop: "1px solid white", pt: 1, mt: 2 }}>
-          <Typography variant="h5">Getting Started</Typography>
-          <Typography variant="body1">1. Create an account.</Typography>
-          <Typography variant="body1">2. Join or create a league.</Typography>
-          <Typography variant="body1">
-            Follow these steps to start playing!
-          </Typography>
-        </Box>
-      </Box>
+          POLISHING THE TROPHY…
+        </p>
+      </CenterStage>
     );
   }
 
-  if (loadingTeam) {
+  if (auth.isAuthenticated) {
     return (
-      <Box sx={defaultBoxStyles}>
-        <Typography variant="h5">Loading team data...</Typography>
-      </Box>
+      <CenterStage>
+        <p
+          className="font-score"
+          style={{ color: "var(--bone-dim)", letterSpacing: "0.24em" }}
+        >
+          TAKING YOU TO YOUR SQUAD…
+        </p>
+      </CenterStage>
     );
   }
+
+  // ---- Signed-out hero -----------------------------------------------------
+  const signUp = () => {
+    const signupUrl = process.env.NEXT_PUBLIC_COGNITO_SIGNUP_URL;
+    if (signupUrl) window.location.href = signupUrl;
+    else console.error("NEXT_PUBLIC_COGNITO_SIGNUP_URL is not defined");
+  };
 
   return (
-    <Box sx={defaultBoxStyles}>
-      <Typography variant="h5">Redirecting to your team page...</Typography>
-    </Box>
+    <main className="relative overflow-hidden">
+      <section className="mx-auto flex min-h-[calc(100vh-64px)] max-w-4xl flex-col items-center justify-center px-5 py-16 text-center">
+        <div className="rise-in">
+          <Image
+            src="/golden-bota-boiz.png"
+            alt="Golden Bota Boiz crest"
+            width={190}
+            height={190}
+            priority
+            className="drop-shadow-[0_10px_40px_rgba(212,175,55,0.28)]"
+          />
+        </div>
+
+        <p
+          className="eyebrow rise-in mt-6"
+          style={{ fontSize: "0.72rem", animationDelay: "80ms" }}
+        >
+          MLS Fantasy · Goals only · Winner takes the boot
+        </p>
+
+        <h1
+          className="font-engrave rise-in mt-3"
+          style={{
+            animationDelay: "140ms",
+            fontWeight: 800,
+            lineHeight: 1.02,
+            fontSize: "clamp(2.6rem, 9vw, 5.5rem)",
+          }}
+        >
+          <span
+            className="block"
+            style={{
+              backgroundImage:
+                "linear-gradient(180deg, var(--gold-bright), var(--bota-gold) 55%, var(--gold-deep))",
+              WebkitBackgroundClip: "text",
+              backgroundClip: "text",
+              color: "transparent",
+            }}
+          >
+            GOLDEN BOTA
+          </span>
+        </h1>
+
+        <p
+          className="rise-in mt-5 max-w-xl text-base sm:text-lg"
+          style={{ color: "var(--bone-dim)", animationDelay: "200ms" }}
+        >
+          One rule: your strikers score, you climb the plate. Draft a squad,
+          chase the transfer window, and settle — once and for all — who owns
+          the Golden Boot.
+        </p>
+
+        {auth.error && (
+          <p
+            className="rise-in mt-5 text-sm"
+            style={{ color: "var(--bone-dim)", animationDelay: "230ms" }}
+          >
+            Your session expired — sign in again to pick up where you left off.
+          </p>
+        )}
+
+        <div
+          className="rise-in mt-9 flex flex-col items-center gap-3 sm:flex-row"
+          style={{ animationDelay: "260ms" }}
+        >
+          <button
+            onClick={() => auth.signinRedirect()}
+            className="font-score px-8 py-3 text-sm transition-transform duration-200 hover:-translate-y-0.5"
+            style={{
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--pitch)",
+              background:
+                "linear-gradient(180deg, var(--gold-bright), var(--bota-gold) 60%, var(--gold-deep))",
+              borderRadius: 4,
+              fontWeight: 600,
+              boxShadow: "0 8px 24px rgba(212,175,55,0.3)",
+            }}
+          >
+            Sign In
+          </button>
+          <button
+            onClick={signUp}
+            className="font-score px-8 py-3 text-sm transition-colors duration-200"
+            style={{
+              letterSpacing: "0.14em",
+              textTransform: "uppercase",
+              color: "var(--bota-gold)",
+              border: "1px solid rgba(212,175,55,0.5)",
+              borderRadius: 4,
+              fontWeight: 500,
+            }}
+          >
+            Create Account
+          </button>
+        </div>
+
+        <FiligreeDivider className="mt-14 w-full" />
+
+        {/* Three-step "how it works" — a real sequence, so numbering earns its place */}
+        <ol className="rise-in mt-10 grid w-full grid-cols-1 gap-4 text-left sm:grid-cols-3" style={{ animationDelay: "320ms" }}>
+          {[
+            {
+              n: "I",
+              title: "Join a league",
+              body: "Create one for your group or join with an invite.",
+            },
+            {
+              n: "II",
+              title: "Draft your strikers",
+              body: "Snake draft the MLS players you think will bang in goals.",
+            },
+            {
+              n: "III",
+              title: "Climb the boot",
+              body: "Every real goal your players score lifts you up the table.",
+            },
+          ].map((step) => (
+            <li key={step.n} className="plaque p-5">
+              <span
+                className="font-engrave text-gold"
+                style={{ fontSize: "1.4rem", fontWeight: 700 }}
+              >
+                {step.n}
+              </span>
+              <h3
+                className="font-engrave mt-1"
+                style={{ color: "var(--bone)", fontSize: "1.05rem" }}
+              >
+                {step.title}
+              </h3>
+              <p className="mt-1 text-sm" style={{ color: "var(--bone-dim)" }}>
+                {step.body}
+              </p>
+            </li>
+          ))}
+        </ol>
+      </section>
+    </main>
+  );
+}
+
+function CenterStage({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex min-h-[calc(100vh-64px)] items-center justify-center px-5">
+      {children}
+    </div>
   );
 }
 
