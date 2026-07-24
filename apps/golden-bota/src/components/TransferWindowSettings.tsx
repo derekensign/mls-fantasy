@@ -17,6 +17,7 @@ import {
   GoldenBootTableResponse,
   updateDraftSettings,
   getTransferWindowInfo,
+  fetchFantasyPlayersByLeague,
 } from "@mls-fantasy/api";
 import DraftOrderEditor from "./DraftOrderEditor";
 import axios from "axios";
@@ -122,46 +123,10 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
       }
 
       try {
-        // Always create transfer order based on reverse standings (default behavior)
-        if (orderedPlayers.length > 0) {
-          console.log(
-            "🔄 Setting transfer order from reverse standings (default)"
-          );
-          console.log(
-            "📊 Current orderedPlayers:",
-            orderedPlayers.map(
-              (p) => `${p.FantasyPlayerName}: ${p.TotalGoals} goals`
-            )
-          );
-
-          // Sort teams by TotalGoals ascending (worst teams first for transfer priority)
-          const sortedTeams = [...orderedPlayers].sort((a, b) => {
-            // Handle undefined/null TotalGoals - treat as 0 for sorting
-            const aGoals = a.TotalGoals ?? 0;
-            const bGoals = b.TotalGoals ?? 0;
-            return aGoals - bGoals;
-          });
-
-          console.log(
-            "📊 Sorted teams (worst first):",
-            sortedTeams.map(
-              (p) => `${p.FantasyPlayerName}: ${p.TotalGoals ?? 0} goals`
-            )
-          );
-
-          // Create transfer order IDs (ensure they are strings for drag-and-drop)
-          const newTransferOrderIds = sortedTeams.map((player) =>
-            String(player.FantasyPlayerId || "")
-          );
-
-          console.log("📊 Reverse standings order IDs:", newTransferOrderIds);
-          setTransferOrderIds(newTransferOrderIds);
-
-          // Add a small delay to ensure state update is complete
-          setTimeout(() => {
-            console.log("✅ Transfer order IDs set successfully");
-          }, 0);
-        }
+        // NOTE: the transfer order (transferOrderIds) is built in fetchData from
+        // the standings joined to FantasyPlayerIds. We intentionally do NOT rebuild
+        // it here — doing so previously overwrote the good order with empty strings
+        // because the standings rows carry no FantasyPlayerId of their own.
 
         // Initialize other settings from draftSettings
         setMaxRounds(extractValue(draftSettings.transfer_max_rounds) || 2);
@@ -211,36 +176,67 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        console.log("📈 Fetching Golden Boot table data...");
-        const goldenBootData = await fetchGoldenBootTable(String(leagueId));
+        console.log("📈 Fetching Golden Boot table + fantasy players...");
+        // The Golden Boot standings give us goals per team but NO FantasyPlayerId.
+        // The transfer turn logic (advanceTransferTurn, getTransferWindow, and the
+        // manager transfer page) all key off FantasyPlayerId, so the saved
+        // transferOrder MUST contain FantasyPlayerIds. Fetch the fantasy-player
+        // roster too so we can resolve each standings row's FantasyPlayerId by name.
+        const [goldenBootData, fantasyPlayers] = await Promise.all([
+          fetchGoldenBootTable(String(leagueId)),
+          fetchFantasyPlayersByLeague(String(leagueId)),
+        ]);
         console.log("📈 Fetched standings:", goldenBootData);
 
-        // Sort the Golden Boot data by TotalGoals (worst first)
-        const sortedStandings = [...goldenBootData].sort((a, b) => {
-          const aGoals = a.TotalGoals ?? 0;
-          const bGoals = b.TotalGoals ?? 0;
-          return aGoals - bGoals;
+        // Build a name → FantasyPlayerId lookup (trimmed, since names can carry
+        // trailing whitespace in the data).
+        const nameToId = new Map<string, string>();
+        fantasyPlayers.forEach((fp) => {
+          const key = (fp.FantasyPlayerName || "").trim();
+          if (key) nameToId.set(key, String(fp.FantasyPlayerId));
         });
+
+        // Sort the Golden Boot data by TotalGoals (worst first for transfer priority)
+        // and attach the resolved FantasyPlayerId to each row.
+        const sortedStandings = [...goldenBootData]
+          .sort((a, b) => (a.TotalGoals ?? 0) - (b.TotalGoals ?? 0))
+          .map((row) => ({
+            ...row,
+            FantasyPlayerId:
+              nameToId.get((row.FantasyPlayerName || "").trim()) || "",
+          }));
 
         console.log(
           "📊 Sorted standings (worst first):",
           sortedStandings.map(
-            (p) => `${p.FantasyPlayerName}: ${p.TotalGoals ?? 0} goals`
+            (p) =>
+              `${p.FantasyPlayerName} [${p.FantasyPlayerId}]: ${
+                p.TotalGoals ?? 0
+              } goals`
           )
         );
 
-        // Create transfer order IDs using the FantasyPlayerName as the ID
-        // Since Golden Boot table doesn't have FantasyPlayerId, we'll use the name as the identifier
+        // Warn loudly if any team failed to resolve to a FantasyPlayerId — an
+        // empty id here is what previously produced a broken (all-empty) order.
+        const unresolved = sortedStandings.filter((p) => !p.FantasyPlayerId);
+        if (unresolved.length > 0) {
+          console.error(
+            "⚠️ Could not resolve FantasyPlayerId for teams:",
+            unresolved.map((p) => p.FantasyPlayerName)
+          );
+        }
+
+        // Build transfer order from FantasyPlayerIds (worst first), dropping any
+        // that failed to resolve so we never persist empty-string entries.
         const newTransferOrderIds = sortedStandings
-          .map((player) => player.FantasyPlayerName || "")
+          .map((player) => player.FantasyPlayerId)
           .filter(Boolean);
 
         console.log(
-          "📊 Final transfer order IDs (using names):",
+          "📊 Final transfer order IDs (FantasyPlayerId):",
           newTransferOrderIds
         );
 
-        // Set the ordered players (use the sorted standings data)
         setOrderedPlayers(sortedStandings);
         setTransferOrderIds(newTransferOrderIds);
       } catch (error) {
@@ -273,10 +269,12 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
       return;
     }
 
-    // Reorder players based on transferOrderIds (using names as identifiers)
+    // Reorder players based on transferOrderIds (FantasyPlayerId identifiers)
     const reorderedPlayers = transferOrderIds
-      .map((name) =>
-        orderedPlayers.find((player) => player.FantasyPlayerName === name)
+      .map((id) =>
+        orderedPlayers.find(
+          (player) => String(player.FantasyPlayerId) === id
+        )
       )
       .filter(Boolean); // Remove any undefined entries
 
@@ -289,7 +287,7 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
 
     // Add any players not in transferOrderIds to the end
     const remainingPlayers = orderedPlayers.filter(
-      (player) => !transferOrderIds.includes(player.FantasyPlayerName || "")
+      (player) => !transferOrderIds.includes(String(player.FantasyPlayerId))
     );
 
     const finalOrder = [...reorderedPlayers, ...remainingPlayers];
