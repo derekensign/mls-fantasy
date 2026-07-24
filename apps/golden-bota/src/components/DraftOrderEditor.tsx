@@ -62,7 +62,7 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
 
   return (
     <Paper sx={{ backgroundColor: "#B8860B", padding: 2, marginBottom: 2 }}>
-      <Typography variant="h6" gutterBottom>
+      <Typography variant="h6" gutterBottom sx={{ color: "#1a1a1a" }}>
         {title}
       </Typography>
       <Button
@@ -98,6 +98,10 @@ const DraftOrderEditor: React.FC<DraftOrderEditorProps> = ({
                         backgroundColor: snapshot.isDragging
                           ? "#ddd"
                           : "#f9f9f9",
+                        // Force dark text so team names stay legible on the
+                        // near-white row regardless of the inherited theme color.
+                        color: "#1a1a1a",
+                        fontWeight: 500,
                         cursor: "move",
                       }}
                     >

@@ -230,31 +230,44 @@ const DraftSettings: React.FC<DraftSettingsProps> = ({
           e.preventDefault();
           handleSave();
         }}
-        className="space-y-2"
+        className="space-y-3"
       >
-        <TextField
-          type="datetime-local"
-          label="Draft Start Time"
-          variant="outlined"
-          fullWidth
-          value={draftStartTime}
-          onChange={(e) => setDraftStartTime(e.target.value)}
-          InputLabelProps={{
-            shrink: true,
-            sx: { color: "white !important" },
-          }}
-          InputProps={{ sx: { color: "white !important" } }}
-        />
-        <TextField
-          type="number"
-          label="Number of Rounds"
-          variant="outlined"
-          fullWidth
-          value={numberOfRounds}
-          onChange={(e) => setNumberOfRounds(Number(e.target.value))}
-          InputLabelProps={{ sx: { color: "white !important" } }}
-          InputProps={{ sx: { color: "white !important" } }}
-        />
+        <div>
+          <label
+            htmlFor="draftStartTime"
+            className="block mb-1 text-sm font-semibold"
+            style={{ color: "white" }}
+          >
+            Draft Start Time
+          </label>
+          <TextField
+            id="draftStartTime"
+            type="datetime-local"
+            variant="outlined"
+            fullWidth
+            value={draftStartTime}
+            onChange={(e) => setDraftStartTime(e.target.value)}
+            InputProps={{ sx: { color: "white !important" } }}
+          />
+        </div>
+        <div>
+          <label
+            htmlFor="numberOfRounds"
+            className="block mb-1 text-sm font-semibold"
+            style={{ color: "white" }}
+          >
+            Number of Rounds
+          </label>
+          <TextField
+            id="numberOfRounds"
+            type="number"
+            variant="outlined"
+            fullWidth
+            value={numberOfRounds}
+            onChange={(e) => setNumberOfRounds(Number(e.target.value))}
+            InputProps={{ sx: { color: "white !important" } }}
+          />
+        </div>
 
         {/* Render the drag & drop draft order editor */}
         <DraftOrderEditor

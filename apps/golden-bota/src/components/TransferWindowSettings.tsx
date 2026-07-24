@@ -8,7 +8,6 @@ import {
   FormControlLabel,
   Checkbox,
   FormControl,
-  InputLabel,
   Select,
   MenuItem,
 } from "@mui/material";
@@ -427,57 +426,66 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
       >
         {/* Transfer Window Time Range */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TextField
-            type="datetime-local"
-            label="Transfer Window Start"
-            variant="outlined"
-            fullWidth
-            value={transferStartTime}
-            onChange={(e) => setTransferStartTime(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-              sx: { color: "white !important" },
-            }}
-            InputProps={{ sx: { color: "white !important" } }}
-          />
-          <TextField
-            type="datetime-local"
-            label="Transfer Window End"
-            variant="outlined"
-            fullWidth
-            value={transferEndTime}
-            onChange={(e) => setTransferEndTime(e.target.value)}
-            InputLabelProps={{
-              shrink: true,
-              sx: { color: "white !important" },
-            }}
-            InputProps={{ sx: { color: "white !important" } }}
-          />
+          <div>
+            <label
+              htmlFor="transferStartTime"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              Transfer Window Start
+            </label>
+            <TextField
+              id="transferStartTime"
+              type="datetime-local"
+              variant="outlined"
+              fullWidth
+              value={transferStartTime}
+              onChange={(e) => setTransferStartTime(e.target.value)}
+              InputProps={{ sx: { color: "white !important" } }}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="transferEndTime"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              Transfer Window End
+            </label>
+            <TextField
+              id="transferEndTime"
+              type="datetime-local"
+              variant="outlined"
+              fullWidth
+              value={transferEndTime}
+              onChange={(e) => setTransferEndTime(e.target.value)}
+              InputProps={{ sx: { color: "white !important" } }}
+            />
+          </div>
         </div>
 
         {/* Transfer Mode */}
-        <FormControl fullWidth disabled={Boolean(isTransferWindowActive)}>
-          <InputLabel
-            id="transfer-mode-label"
-            sx={{ color: "white !important" }}
+        <div>
+          <label
+            className="block mb-1 text-sm font-semibold"
+            style={{ color: "white" }}
           >
             Transfer Mode
-          </InputLabel>
-          <Select
-            labelId="transfer-mode-label"
-            label="Transfer Mode"
-            value={transferMode}
-            onChange={(e) =>
-              setTransferMode(e.target.value as "standard" | "add_only")
-            }
-            sx={{
-              color: "white !important",
-              ".MuiOutlinedInput-notchedOutline": {
-                borderColor: "rgba(255,255,255,0.5)",
-              },
-              ".MuiSvgIcon-root": { color: "white" },
-            }}
-          >
+          </label>
+          <FormControl fullWidth disabled={Boolean(isTransferWindowActive)}>
+            <Select
+              value={transferMode}
+              onChange={(e) =>
+                setTransferMode(e.target.value as "standard" | "add_only")
+              }
+              sx={{
+                color: "white !important",
+                ".MuiOutlinedInput-notchedOutline": {
+                  borderColor: "rgba(255,255,255,0.5)",
+                },
+                ".MuiSvgIcon-root": { color: "white" },
+              }}
+            >
             <MenuItem value="standard">
               Standard — drop a player, then add one
             </MenuItem>
@@ -485,31 +493,41 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
               Add only — add players without dropping (squads grow)
             </MenuItem>
           </Select>
+          </FormControl>
           <Typography
             variant="caption"
+            component="p"
             sx={{ color: "rgba(255,255,255,0.7)", mt: 0.5 }}
           >
             {transferMode === "add_only"
               ? "Each manager adds a player per turn with no drop required. With 2 rounds, every squad grows by 2."
               : "Each manager drops a player, then picks one up. Roster size stays the same."}
           </Typography>
-        </FormControl>
+        </div>
 
         {/* Transfer Settings */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <TextField
-            type="number"
-            label="Maximum Rounds"
-            variant="outlined"
-            fullWidth
-            value={maxRounds}
-            onChange={(e) => setMaxRounds(Number(e.target.value))}
-            disabled={Boolean(isTransferWindowActive)}
-            InputLabelProps={{ sx: { color: "white !important" } }}
-            InputProps={{ sx: { color: "white !important", min: 1, max: 10 } }}
-            helperText="How many rounds of transfers each team gets"
-            FormHelperTextProps={{ sx: { color: "rgba(255,255,255,0.7)" } }}
-          />
+          <div>
+            <label
+              htmlFor="maxRounds"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              Maximum Rounds
+            </label>
+            <TextField
+              id="maxRounds"
+              type="number"
+              variant="outlined"
+              fullWidth
+              value={maxRounds}
+              onChange={(e) => setMaxRounds(Number(e.target.value))}
+              disabled={Boolean(isTransferWindowActive)}
+              InputProps={{ sx: { color: "white !important", min: 1, max: 10 } }}
+              helperText="How many rounds of transfers each team gets"
+              FormHelperTextProps={{ sx: { color: "rgba(255,255,255,0.7)" } }}
+            />
+          </div>
 
           <div className="flex items-center">
             <FormControlLabel

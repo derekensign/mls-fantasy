@@ -145,38 +145,62 @@ const LeagueSettings: React.FC<LeagueSettingsProps> = ({
           League Settings
         </h3>
         {error && <div className="text-red-500">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-2">
-          <TextField
-            label="League Name"
-            variant="outlined"
-            fullWidth
-            name="leagueName"
-            value={settings.leagueName}
-            onChange={handleInputChange}
-            InputLabelProps={{ sx: { color: "white !important" } }}
-            InputProps={{ sx: { color: "white !important" } }}
-          />
-          <TextField
-            label="Commissioner Name"
-            variant="outlined"
-            fullWidth
-            name="commissionerName"
-            value={settings.commissioner.name}
-            onChange={handleInputChange}
-            InputLabelProps={{ sx: { color: "white !important" } }}
-            InputProps={{ sx: { color: "white !important" } }}
-          />
-          <TextField
-            label="Commissioner Email"
-            variant="outlined"
-            fullWidth
-            type="email"
-            name="commissionerEmail"
-            value={settings.commissioner.email}
-            onChange={handleInputChange}
-            InputLabelProps={{ sx: { color: "white !important" } }}
-            InputProps={{ sx: { color: "white !important" } }}
-          />
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <label
+              htmlFor="leagueName"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              League Name
+            </label>
+            <TextField
+              id="leagueName"
+              variant="outlined"
+              fullWidth
+              name="leagueName"
+              value={settings.leagueName}
+              onChange={handleInputChange}
+              InputProps={{ sx: { color: "white !important" } }}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="commissionerName"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              Commissioner Name
+            </label>
+            <TextField
+              id="commissionerName"
+              variant="outlined"
+              fullWidth
+              name="commissionerName"
+              value={settings.commissioner.name}
+              onChange={handleInputChange}
+              InputProps={{ sx: { color: "white !important" } }}
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="commissionerEmail"
+              className="block mb-1 text-sm font-semibold"
+              style={{ color: "white" }}
+            >
+              Commissioner Email
+            </label>
+            <TextField
+              id="commissionerEmail"
+              variant="outlined"
+              fullWidth
+              type="email"
+              name="commissionerEmail"
+              value={settings.commissioner.email}
+              onChange={handleInputChange}
+              InputProps={{ sx: { color: "white !important" } }}
+            />
+          </div>
           <Button
             type="submit"
             fullWidth
