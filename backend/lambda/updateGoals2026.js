@@ -10,7 +10,9 @@
  * - Calls the public MLS Sport API (sportapi.mlssoccer.com) for structured JSON stats
  * - Primary matching by mls_api_id (pre-populated by testPlayerMapping.js --write)
  * - Falls back to fuzzy name matching for new/unmapped players, then persists the ID
- * - Only fetches players who have scored (ordered by goals desc, stops when goals = 0)
+ * - Pages the ENTIRE player list and de-duplicates by player_id; the goals-desc sort is not stable
+ *   across pages, so any early exit silently freezes real scorers (see fetchMLSStats)
+ * - Refuses to write unless all 30 clubs appear, so a partial response cannot zero out goals
  * - Incremental updates using UpdateCommand
  * - Resilient error handling (continues on individual failures)
  * - CloudWatch logging with structured metrics
@@ -36,6 +38,12 @@ const MLS_COMPETITION_ID = "MLS-COM-000001";
 const MLS_SEASON_ID = "MLS-SEA-0001KA";
 const MLS_STATS_API_BASE = "https://sportapi.mlssoccer.com/api/stats/players";
 const MLS_STATS_PAGE_SIZE = 100;
+// ~950 players / 100 per page = 10 pages. The guard is generous so squad growth does not silently
+// truncate the list, but bounded so a broken `page` parameter cannot loop forever inside Lambda.
+const MLS_STATS_MAX_PAGES = 30;
+// A full MLS response covers all 30 clubs. Fewer means we are looking at a partial response, and
+// acting on it would zero out the goals of everyone on the missing clubs.
+const MLS_EXPECTED_TEAM_COUNT = 30;
 
 // Manual overrides for known name mismatches between MLS API and DynamoDB
 const NAME_OVERRIDES = {
@@ -67,20 +75,31 @@ function buildPlayerName(apiPlayer) {
 
 /**
  * Fetch player statistics from the MLS Sport API.
- * Paginates through results, stopping when all players with goals > 0 are collected.
- * Returns array of { playerId, name, team, goals, assists, gamesPlayed }
+ *
+ * Pages through the FULL player list and de-duplicates by player_id, because the API's
+ * goals-desc sort is not stable across pages: with ~950 players every page after the first
+ * returns 92-99 previously-unseen rows out of 100, so the same player can appear on two pages
+ * while another never appears at all in a truncated sample.
+ *
+ * This function used to stop at the first row with goals === 0, on the assumption that a
+ * descending sort means everything after it is also 0. Combined with the unstable sort that
+ * silently froze real scorers: Rafael Navarro (4 -> 10), Daniel Gazdag (1 -> 3) and Dejan
+ * Joveljic (2 -> 8) all sat at their old totals for months, which was enough to put the wrong
+ * fantasy manager top of the golden boot table. Never early-exit this loop on a goal value.
+ *
+ * Returns array of { playerId, name, team, goals, assists, gamesPlayed } for EVERY player,
+ * scorers and non-scorers alike. Callers decide what to do with zero-goal rows.
  */
 async function fetchMLSStats() {
-  const allPlayersWithGoals = [];
+  const playersByApiId = new Map();
   let currentPage = 1;
-  let keepPaginating = true;
 
   console.log(`Fetching stats from MLS Sport API (competition: ${MLS_COMPETITION_ID}, season: ${MLS_SEASON_ID})`);
 
-  while (keepPaginating) {
+  while (currentPage <= MLS_STATS_MAX_PAGES) {
     const apiUrl = `${MLS_STATS_API_BASE}/competition/${MLS_COMPETITION_ID}/season/${MLS_SEASON_ID}/order/goals/desc?pageSize=${MLS_STATS_PAGE_SIZE}&page=${currentPage}`;
-    console.log(`Fetching page ${currentPage}: ${apiUrl}`);
 
+    let playersOnPage;
     try {
       const response = await axios.get(apiUrl, {
         headers: {
@@ -88,39 +107,7 @@ async function fetchMLSStats() {
         },
         timeout: 30000,
       });
-
-      const playersOnPage = response.data;
-
-      if (!Array.isArray(playersOnPage) || playersOnPage.length === 0) {
-        console.log(`Page ${currentPage} returned no results - done paginating`);
-        break;
-      }
-
-      for (const apiPlayer of playersOnPage) {
-        const goals = apiPlayer.goals || 0;
-
-        // Since results are ordered by goals desc, once we hit 0 goals we're done
-        if (goals === 0) {
-          keepPaginating = false;
-          break;
-        }
-
-        allPlayersWithGoals.push({
-          playerId: apiPlayer.player_id,
-          name: buildPlayerName(apiPlayer),
-          team: apiPlayer.team_three_letter_code || apiPlayer.team_short_name || "",
-          goals: goals,
-          assists: apiPlayer.assists || 0,
-          gamesPlayed: apiPlayer.game_started || 0,
-        });
-      }
-
-      // If we processed all players on the page without hitting 0 goals, fetch next page
-      if (keepPaginating && playersOnPage.length === MLS_STATS_PAGE_SIZE) {
-        currentPage++;
-      } else {
-        keepPaginating = false;
-      }
+      playersOnPage = response.data;
     } catch (error) {
       console.error(`Failed to fetch page ${currentPage}:`, {
         message: error.message,
@@ -128,18 +115,65 @@ async function fetchMLSStats() {
       });
       throw error;
     }
+
+    if (!Array.isArray(playersOnPage) || playersOnPage.length === 0) {
+      console.log(`Page ${currentPage} returned no results - done paginating`);
+      break;
+    }
+
+    let newOnPage = 0;
+    for (const apiPlayer of playersOnPage) {
+      if (!apiPlayer.player_id || playersByApiId.has(apiPlayer.player_id)) {
+        continue;
+      }
+      newOnPage++;
+      playersByApiId.set(apiPlayer.player_id, {
+        playerId: apiPlayer.player_id,
+        name: buildPlayerName(apiPlayer),
+        team:
+          apiPlayer.team_three_letter_code || apiPlayer.team_short_name || "",
+        goals: apiPlayer.goals || 0,
+        assists: apiPlayer.assists || 0,
+        gamesPlayed: apiPlayer.game_started || 0,
+      });
+    }
+
+    console.log(
+      `Page ${currentPage}: ${playersOnPage.length} rows, ${newOnPage} new (running total ${playersByApiId.size})`
+    );
+
+    // A short page is the only reliable end-of-list signal.
+    if (playersOnPage.length < MLS_STATS_PAGE_SIZE) {
+      break;
+    }
+    currentPage++;
   }
 
-  console.log(`Successfully fetched ${allPlayersWithGoals.length} players with goals`);
+  if (currentPage > MLS_STATS_MAX_PAGES) {
+    console.warn(
+      `Hit the ${MLS_STATS_MAX_PAGES}-page guard - the player list may be truncated`
+    );
+  }
 
-  // Log top 5 scorers for verification
-  const topScorers = allPlayersWithGoals.slice(0, 5);
+  const allPlayers = Array.from(playersByApiId.values()).sort(
+    (a, b) => b.goals - a.goals
+  );
+  const scorers = allPlayers.filter((p) => p.goals > 0);
+
   console.log(
-    "Top 5 scorers:",
-    topScorers.map((p) => `${p.name} (${p.goals}G)`).join(", ")
+    `Fetched ${allPlayers.length} unique players (${scorers.length} with at least one goal)`
   );
 
-  return allPlayersWithGoals;
+  // Log top 5 scorers for verification
+  console.log(
+    "Top 5 scorers:",
+    scorers
+      .slice(0, 5)
+      .map((p) => `${p.name} (${p.goals}G)`)
+      .join(", ")
+  );
+
+  return allPlayers;
 }
 
 /**
@@ -178,7 +212,13 @@ async function getAllPlayers() {
 
 /**
  * Find matching player in DynamoDB.
- * Tries mls_api_id first (O(1)), then falls back to fuzzy name matching.
+ * Tries mls_api_id first (O(1)), then falls back to exact-then-fuzzy name matching.
+ *
+ * Name matching only ever considers rows that do NOT yet carry an mls_api_id. A row with an id
+ * already belongs to exactly one API player and must only be reachable through that id, because
+ * two different people can share a name: pool row 657 holds Nicolás Fernández (NYC), and a real,
+ * different Nick Fernandez (SJ) exists in the league. Without this guard the second one name-matches
+ * the first one's row and overwrites both his goal total and his mls_api_id.
  */
 function findMatchingPlayer(apiPlayer, dbPlayers, apiIdMap) {
   // Primary: match by mls_api_id
@@ -191,15 +231,18 @@ function findMatchingPlayer(apiPlayer, dbPlayers, apiIdMap) {
     };
   }
 
-  // Fallback: name-based matching
+  // Fallback: name-based matching, against unclaimed and active rows only.
+  const candidates = dbPlayers.filter(
+    (p) => p.name && !p.mls_api_id && p.inactive_2026 !== true
+  );
+
   const apiName = apiPlayer.name.toLowerCase().trim();
   const apiNameNormalized = stripAccents(apiName);
   const overrideName = NAME_OVERRIDES[apiPlayer.name];
 
   // Try exact match first (with override if exists), comparing with accents stripped
-  const exactMatch = dbPlayers.find((p) => {
-    const dbName = p.name?.toLowerCase().trim();
-    if (!dbName) return false;
+  const exactMatch = candidates.find((p) => {
+    const dbName = p.name.toLowerCase().trim();
     const dbNameNormalized = stripAccents(dbName);
     return (
       dbNameNormalized === apiNameNormalized ||
@@ -215,22 +258,29 @@ function findMatchingPlayer(apiPlayer, dbPlayers, apiIdMap) {
   // Try fuzzy matching with Levenshtein distance (on accent-stripped names)
   let bestMatch = null;
   let bestDistance = Infinity;
+  let runnerUpDistance = Infinity;
 
-  for (const dbPlayer of dbPlayers) {
-    if (!dbPlayer.name) continue;
-
+  for (const dbPlayer of candidates) {
     const dbNameNormalized = stripAccents(dbPlayer.name.toLowerCase().trim());
     const dist = levenshteinDistance(apiNameNormalized, dbNameNormalized);
 
     if (dist < bestDistance) {
+      runnerUpDistance = bestDistance;
       bestDistance = dist;
       bestMatch = dbPlayer;
+    } else if (dist < runnerUpDistance) {
+      runnerUpDistance = dist;
     }
   }
 
-  // Only accept fuzzy match if distance is reasonable (< 30% of name length)
-  const threshold = Math.floor(apiNameNormalized.length * 0.3);
-  if (bestMatch && bestDistance <= threshold) {
+  /*
+   * Accept a fuzzy match only when it is both close and unambiguous. A tie means two pool rows are
+   * equally plausible, and picking whichever the scan happened to return first is how "Chance Cowell"
+   * ends up holding Cade Cowell's stats. The absolute cap of 3 edits keeps long names from getting a
+   * generous proportional budget they should not have.
+   */
+  const threshold = Math.min(Math.floor(apiNameNormalized.length * 0.3), 3);
+  if (bestMatch && bestDistance <= threshold && bestDistance < runnerUpDistance) {
     const confidence = 1 - bestDistance / apiNameNormalized.length;
     return {
       player: bestMatch,
@@ -287,6 +337,8 @@ exports.handler = async (event) => {
 
   const metrics = {
     apiPlayers: 0,
+    apiScorers: 0,
+    teamsSeen: 0,
     dbPlayers: 0,
     matchedById: 0,
     matchedByName: 0,
@@ -295,6 +347,8 @@ exports.handler = async (event) => {
     noChange: 0,
     newIdsMapped: 0,
     errors: 0,
+    unmatchedGoalless: 0,
+    skippedGoallessNameMatch: 0,
     unmatchedNames: [],
   };
 
@@ -304,16 +358,30 @@ exports.handler = async (event) => {
     // Step 1: Fetch current stats from MLS Sport API
     const apiPlayers = await fetchMLSStats();
     metrics.apiPlayers = apiPlayers.length;
+    metrics.apiScorers = apiPlayers.filter((p) => p.goals > 0).length;
 
     if (apiPlayers.length === 0) {
-      console.warn("No players with goals found - possible off-season or API issue");
+      console.warn("No players returned - possible off-season or API issue");
       return {
         statusCode: 200,
         body: JSON.stringify({
-          message: "No players with goals found",
+          message: "No players returned",
           metrics,
         }),
       };
+    }
+
+    /*
+     * Bail out before writing anything if the response does not cover the whole league. Now that
+     * zero-goal rows are honoured, a partial response would look exactly like "everyone on the
+     * missing clubs stopped scoring" and would wipe their totals.
+     */
+    const teamsSeen = new Set(apiPlayers.map((p) => p.team).filter(Boolean));
+    metrics.teamsSeen = teamsSeen.size;
+    if (teamsSeen.size < MLS_EXPECTED_TEAM_COUNT) {
+      throw new Error(
+        `Refusing to update: API returned only ${teamsSeen.size} of ${MLS_EXPECTED_TEAM_COUNT} clubs, which looks like a partial response`
+      );
     }
 
     // Step 2: Get all players from DynamoDB
@@ -333,12 +401,32 @@ exports.handler = async (event) => {
         const match = findMatchingPlayer(apiPlayer, dbPlayers, apiIdMap);
 
         if (!match) {
-          metrics.unmatchedNames.push(
-            `${apiPlayer.name} (${apiPlayer.team}) [${apiPlayer.playerId}]`
-          );
-          console.warn(
-            `No match found: ${apiPlayer.name} (${apiPlayer.team}) [${apiPlayer.playerId}]`
-          );
+          /*
+           * Only a scorer going unmatched is worth reporting. Most of the ~600 goalless players in
+           * the league have nothing to update, and treating them as failures buries the handful of
+           * genuine mapping gaps under noise — and trips the 10% high-unmatched-rate alarm on every
+           * single run.
+           */
+          if (apiPlayer.goals > 0) {
+            metrics.unmatchedNames.push(
+              `${apiPlayer.name} (${apiPlayer.team}) [${apiPlayer.playerId}] ${apiPlayer.goals}G`
+            );
+            console.warn(
+              `No match found for scorer: ${apiPlayer.name} (${apiPlayer.team}) [${apiPlayer.playerId}] ${apiPlayer.goals}G`
+            );
+          } else {
+            metrics.unmatchedGoalless++;
+          }
+          continue;
+        }
+
+        /*
+         * A goalless player reached only by a name guess gets no write. The upside is nil (their
+         * total is already 0 in all but a correction case) and the downside is stamping a guessed
+         * mls_api_id onto the wrong row, which then becomes the authoritative match forever.
+         */
+        if (apiPlayer.goals === 0 && match.matchType !== "id") {
+          metrics.skippedGoallessNameMatch++;
           continue;
         }
 
@@ -394,6 +482,8 @@ exports.handler = async (event) => {
       duration_ms: duration,
       metrics: {
         apiPlayers: metrics.apiPlayers,
+        apiScorers: metrics.apiScorers,
+        teamsSeen: metrics.teamsSeen,
         database: metrics.dbPlayers,
         matchedById: metrics.matchedById,
         matchedByName: metrics.matchedByName,
@@ -402,16 +492,20 @@ exports.handler = async (event) => {
         noChange: metrics.noChange,
         newIdsMapped: metrics.newIdsMapped,
         errors: metrics.errors,
-        unmatchedCount: metrics.unmatchedNames.length,
+        unmatchedGoalless: metrics.unmatchedGoalless,
+        skippedGoallessNameMatch: metrics.skippedGoallessNameMatch,
+        unmatchedScorerCount: metrics.unmatchedNames.length,
       },
-      unmatchedNames: metrics.unmatchedNames.slice(0, 10),
+      // Full list, not a slice: truncating this to 10 is what hid a long tail of unmapped scorers.
+      unmatchedScorers: metrics.unmatchedNames,
     };
 
     console.log("\n" + JSON.stringify(summary, null, 2));
 
-    if (metrics.unmatchedNames.length > metrics.apiPlayers * 0.1) {
+    // Rate is measured against scorers, the only population we expect to match.
+    if (metrics.unmatchedNames.length > metrics.apiScorers * 0.1) {
       console.error(
-        `HIGH UNMATCHED RATE: ${metrics.unmatchedNames.length}/${metrics.apiPlayers} (${((metrics.unmatchedNames.length / metrics.apiPlayers) * 100).toFixed(1)}%)`
+        `HIGH UNMATCHED SCORER RATE: ${metrics.unmatchedNames.length}/${metrics.apiScorers} (${((metrics.unmatchedNames.length / metrics.apiScorers) * 100).toFixed(1)}%)`
       );
       console.error(
         "This may indicate a data quality issue or name format change"

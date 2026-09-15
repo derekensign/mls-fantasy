@@ -142,27 +142,49 @@ const TransferWindowPage: React.FC = () => {
       const allPlayersData = await API.fetchPlayers2025();
 
       // Create available players list using all players but with ownership info from League table
-      const availablePlayers: Player[] = allPlayersData.map((item: any) => {
-        const playerId = item.id.S || item.id;
-        const ownershipInfo = playerOwnershipMap.get(playerId);
+      const availablePlayers: Player[] = allPlayersData
+        .filter((item: any) => {
+          const playerId = item.id?.S || item.id;
+          /*
+           * The player pool keeps departed players and retired duplicate rows forever rather than
+           * deleting them, because League_{id} rows reference Players_2026.id and a deleted id would
+           * orphan a roster spot. `inactive_2026` is the tombstone. Anyone flagged has left MLS (or is
+           * a duplicate of a row we kept), so they must not appear as a draftable option — but if a
+           * league somehow already owns them we still render them so the squad card is not silently
+           * short a player.
+           */
+          const isInactive =
+            item.inactive_2026?.BOOL === true || item.inactive_2026 === true;
+          return !isInactive || playerOwnershipMap.has(playerId);
+        })
+        .map((item: any) => {
+          const playerId = item.id.S || item.id;
+          const ownershipInfo = playerOwnershipMap.get(playerId);
 
-        return {
-          id: parseInt(playerId, 10),
-          name: item.name.S || item.name || `Player ${playerId}`,
-          team: item.team.S || item.team || "MLS",
-          goals_2024: parseInt(item.goals_2025?.N || "0", 10), // Use 2025 data
-          draftedBy: null,
-          ownerTeamName: ownershipInfo?.ownerTeamName || null,
-          ownerFantasyPlayerName: ownershipInfo?.ownerFantasyPlayerName || null,
-          ownerFantasyPlayerId: ownershipInfo?.ownerFantasyPlayerId || null,
-          player_dropped: false,
-          drop_date: undefined,
-          transfer_window_pickup: false,
-          pickup_date: undefined,
-          // Add debug info for ownership
-          _debugOwnership: ownershipInfo ? true : false,
-        };
-      });
+          return {
+            id: parseInt(playerId, 10),
+            name: item.name.S || item.name || `Player ${playerId}`,
+            team: item.team.S || item.team || "MLS",
+            // Mid-season window: the board must show goals scored SO FAR THIS SEASON, not last
+            // season's total. The preseason draft deliberately shows goals_2025 (there is no 2026
+            // form yet), but here a stale column would have people picking on 2025 numbers.
+            goals_2024: parseInt(
+              item.goals_2026?.N ?? item.goals_2026 ?? "0",
+              10
+            ),
+            draftedBy: null,
+            ownerTeamName: ownershipInfo?.ownerTeamName || null,
+            ownerFantasyPlayerName:
+              ownershipInfo?.ownerFantasyPlayerName || null,
+            ownerFantasyPlayerId: ownershipInfo?.ownerFantasyPlayerId || null,
+            player_dropped: false,
+            drop_date: undefined,
+            transfer_window_pickup: false,
+            pickup_date: undefined,
+            // Add debug info for ownership
+            _debugOwnership: ownershipInfo ? true : false,
+          };
+        });
 
       setPlayers(availablePlayers);
 
@@ -889,7 +911,7 @@ const TransferWindowPage: React.FC = () => {
                       )}
                     </Box>
                     <Typography variant="body2" sx={{ color: "#ccc" }}>
-                      Goals: {player.goals_2024 || 0}
+                      Goals (2026): {player.goals_2024 || 0}
                       {player.isDropped && player.droppedAt && (
                         <span
                           style={{

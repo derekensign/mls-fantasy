@@ -310,6 +310,15 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
   };
 
   /*
+   * The goals column carries a different season depending on the mode, and the two callers feed it
+   * different data: the preseason draft passes goals_2025 (there is no current-season form yet) while
+   * a mid-season transfer window passes goals_2026. Labelling it by mode is the only way a picker can
+   * tell which season they are looking at — an unqualified "Goals" reads as current-season and a
+   * hardcoded "(2025)" is simply wrong once the window opens.
+   */
+  const goalsColumnLabel = mode === "transfer" ? "Goals (2026)" : "Goals (2025)";
+
+  /*
    * Mobile View: Uses a grid layout with a header (with sorting controls) rendered once.
    * The grid ensures a consistent column width with some extra right padding for the Actions column.
    */
@@ -343,7 +352,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             }
             onClick={() => handleSort("goals_2024")}
           >
-            Goals
+            {goalsColumnLabel}
           </TableSortLabel>
         </div>
         <div className="flex items-center justify-center pr-4">Actions</div>
@@ -456,7 +465,7 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                   }
                   onClick={() => handleSort("goals_2024")}
                 >
-                  Goals (2025)
+                  {goalsColumnLabel}
                 </TableSortLabel>
               </TableCell>
               <TableCell
