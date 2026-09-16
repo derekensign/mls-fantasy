@@ -92,6 +92,7 @@ function buildPlayerName(apiPlayer) {
  */
 async function fetchMLSStats() {
   const playersByApiId = new Map();
+  const seenRowKeys = new Set();
   let currentPage = 1;
 
   console.log(`Fetching stats from MLS Sport API (competition: ${MLS_COMPETITION_ID}, season: ${MLS_SEASON_ID})`);
@@ -123,18 +124,43 @@ async function fetchMLSStats() {
 
     let newOnPage = 0;
     for (const apiPlayer of playersOnPage) {
-      if (!apiPlayer.player_id || playersByApiId.has(apiPlayer.player_id)) {
+      if (!apiPlayer.player_id) continue;
+      const rowKey = `${apiPlayer.player_id}|${apiPlayer.team_three_letter_code || ""}`;
+      if (seenRowKeys.has(rowKey)) continue; // same player+club repeated by the unstable sort
+      seenRowKeys.add(rowKey);
+
+      /*
+       * The API returns ONE ROW PER CLUB for a player who moved mid-season, each carrying only
+       * the goals scored for that club (Rafael Navarro: COL 10 + STL 4). A fantasy manager
+       * owns the player, not the club, so the season total is the SUM of his rows. Keeping
+       * only the first row seen silently dropped every post-trade goal.
+       */
+      const existing = playersByApiId.get(apiPlayer.player_id);
+      const stint = {
+        team: apiPlayer.team_three_letter_code || apiPlayer.team_short_name || "",
+        goals: apiPlayer.goals || 0,
+        assists: apiPlayer.assists || 0,
+        gamesStarted: apiPlayer.game_started || 0,
+      };
+      if (existing) {
+        existing.goals += stint.goals;
+        existing.assists += stint.assists;
+        existing.gamesPlayed += stint.gamesStarted;
+        existing.stints.push(stint);
+        // Best available guess at the CURRENT club: the stint with the fewest starts is the
+        // newest one. Only used for logging; this function never writes team.
+        existing.team = existing.stints.reduce((a, b) => (b.gamesStarted < a.gamesStarted ? b : a)).team;
         continue;
       }
       newOnPage++;
       playersByApiId.set(apiPlayer.player_id, {
         playerId: apiPlayer.player_id,
         name: buildPlayerName(apiPlayer),
-        team:
-          apiPlayer.team_three_letter_code || apiPlayer.team_short_name || "",
-        goals: apiPlayer.goals || 0,
-        assists: apiPlayer.assists || 0,
-        gamesPlayed: apiPlayer.game_started || 0,
+        team: stint.team,
+        goals: stint.goals,
+        assists: stint.assists,
+        gamesPlayed: stint.gamesStarted,
+        stints: [stint],
       });
     }
 
@@ -159,10 +185,16 @@ async function fetchMLSStats() {
     (a, b) => b.goals - a.goals
   );
   const scorers = allPlayers.filter((p) => p.goals > 0);
+  const multiClub = allPlayers.filter((p) => p.stints.length > 1);
 
   console.log(
-    `Fetched ${allPlayers.length} unique players (${scorers.length} with at least one goal)`
+    `Fetched ${allPlayers.length} unique players (${scorers.length} with at least one goal; ${multiClub.length} with stats at more than one club, goals summed)`
   );
+  for (const p of multiClub.filter((p) => p.goals > 0)) {
+    console.log(
+      `  multi-club: ${p.name} = ${p.goals} (${p.stints.map((s) => `${s.team} ${s.goals}`).join(" + ")})`
+    );
+  }
 
   // Log top 5 scorers for verification
   console.log(

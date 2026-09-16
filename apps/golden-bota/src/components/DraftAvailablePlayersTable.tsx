@@ -587,7 +587,14 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
           </Select>
         </FormControl>
         <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap">
+          <label
+            className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap"
+            title={
+              mode === "transfer"
+                ? "Joined MLS from outside the league on or after Jul 13, 2026 (summer window)"
+                : "New to MLS this season"
+            }
+          >
             <input
               type="checkbox"
               checked={showNewOnly}
@@ -596,7 +603,14 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             />
             New to MLS
           </label>
-          <label className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap">
+          <label
+            className="flex items-center gap-2 cursor-pointer text-white whitespace-nowrap"
+            title={
+              mode === "transfer"
+                ? "Joined their current club on or after Jul 13, 2026 (summer window), from anywhere"
+                : "Changed MLS club this season"
+            }
+          >
             <input
               type="checkbox"
               checked={showNewToTeamOnly}
@@ -606,6 +620,13 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
             New to Team
           </label>
         </div>
+        {mode === "transfer" && (showNewOnly || showNewToTeamOnly) && (
+          <span className="text-xs text-gray-400 w-full">
+            &ldquo;New&rdquo; means a move on or after Jul 13, 2026, when the
+            summer window opened. New to Team includes arrivals from abroad, so
+            it contains everyone in New to MLS.
+          </span>
+        )}
       </div>
       {renderMobileView(sortedPlayers)}
       {renderDesktopView(sortedPlayers)}

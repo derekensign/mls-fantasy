@@ -172,6 +172,8 @@ const CONFIRMED_NAME_OVERRIDES = {
 async function fetchAllMlsPlayers2026() {
   /** @type {Map<string, Record<string, any>>} */
   const playersByApiId = new Map();
+  /** player_id|club pairs already folded in, so an unstable-sort repeat is not double counted */
+  const seenStintKeys = new Set();
 
   for (let pageNumber = 1; pageNumber <= MLS_STATS_MAX_PAGES; pageNumber += 1) {
     const requestUrl =
@@ -193,10 +195,35 @@ async function fetchAllMlsPlayers2026() {
 
     let newOnThisPage = 0;
     for (const apiPlayer of pageRows) {
-      if (!playersByApiId.has(apiPlayer.player_id)) {
-        playersByApiId.set(apiPlayer.player_id, apiPlayer);
-        newOnThisPage += 1;
+      /*
+       * A player who moved clubs mid-season comes back as ONE ROW PER CLUB, each with only the
+       * goals scored for that club (Rafael Navarro: COL 10 + STL 4). The same player+club row
+       * can also repeat across pages because the sort is unstable. So: skip exact repeats,
+       * but SUM distinct stints into one record. Fantasy managers own the player, not the club,
+       * so his season total is the sum. Keeping only the first row dropped every post-trade goal.
+       *
+       * The team code kept is the stint with the fewest starts (almost always the newer club).
+       * It is a heuristic; scripts/flag-summer-window-moves.js sets the current club from dated
+       * transfer records and should be run after this one.
+       */
+      const stintKey = `${apiPlayer.player_id}|${apiPlayer.team_three_letter_code || ""}`;
+      if (seenStintKeys.has(stintKey)) continue;
+      seenStintKeys.add(stintKey);
+
+      const existing = playersByApiId.get(apiPlayer.player_id);
+      if (existing) {
+        existing.goals = (existing.goals || 0) + (apiPlayer.goals || 0);
+        existing.assists = (existing.assists || 0) + (apiPlayer.assists || 0);
+        existing.stints.push({ team: apiPlayer.team_three_letter_code, goals: apiPlayer.goals || 0, game_started: apiPlayer.game_started || 0 });
+        const newest = existing.stints.reduce((a, b) => (b.game_started < a.game_started ? b : a));
+        existing.team_three_letter_code = newest.team;
+        continue;
       }
+      playersByApiId.set(apiPlayer.player_id, {
+        ...apiPlayer,
+        stints: [{ team: apiPlayer.team_three_letter_code, goals: apiPlayer.goals || 0, game_started: apiPlayer.game_started || 0 }],
+      });
+      newOnThisPage += 1;
     }
     console.log(
       `  page ${pageNumber}: ${pageRows.length} rows, ${newOnThisPage} new, ${playersByApiId.size} total`
