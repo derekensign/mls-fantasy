@@ -96,6 +96,25 @@ const TransferWindowPage: React.FC = () => {
   const [localUserDetails, setLocalUserDetails] = useState<any>(null);
   const [userDataLoaded, setUserDataLoaded] = useState<boolean>(false);
 
+  // Commissioner email for this league, so the commissioner gets a "skip this turn" control.
+  // Without it a manager who is away from their phone stalls the whole draft: nobody else can
+  // advance the turn, and the only workaround is calling the API by hand.
+  const [commissionerEmail, setCommissionerEmail] = useState<string | null>(null);
+  useEffect(() => {
+    if (!leagueId || Array.isArray(leagueId)) return;
+    API.getLeagueSettings(String(leagueId))
+      .then((settings: any) => {
+        const raw = settings?.commissioner;
+        const email = typeof raw === "string" ? raw : raw?.S;
+        setCommissionerEmail(email ? String(email).trim().toLowerCase() : null);
+      })
+      .catch(() => setCommissionerEmail(null));
+  }, [leagueId]);
+  const isCommissioner =
+    !!commissionerEmail &&
+    (auth.user?.profile?.email || "").trim().toLowerCase() === commissionerEmail;
+  const [isSkipping, setIsSkipping] = useState<boolean>(false);
+
   // Use local user details instead of store to avoid race conditions
   const userFantasyPlayerId = (
     userDetails?.fantasyPlayerId || localUserDetails?.fantasyPlayerId
@@ -584,10 +603,18 @@ const TransferWindowPage: React.FC = () => {
     }
   };
 
-  // Handle skipping current turn
+  // Commissioner-only: skip whoever is on the clock. Uses the same advance call the app makes
+  // after a pickup, so the skipped manager simply loses this round's pick; the order and the
+  // remaining rounds are untouched.
   const handleSkipTurn = async () => {
-    if (!transferInfo || !leagueId) return;
+    if (!transferInfo || !leagueId || !isCommissioner || isSkipping) return;
+    const skippedName = getCurrentTurnTeamName();
+    const confirmed = confirm(
+      `Skip ${skippedName}'s turn? They lose this round's pick and the next manager is up.`
+    );
+    if (!confirmed) return;
 
+    setIsSkipping(true);
     try {
       const advanceResult = await API.advanceTransferTurn(String(leagueId));
 
@@ -602,10 +629,11 @@ const TransferWindowPage: React.FC = () => {
       }
 
       await loadTransferData(); // Refresh data
-      alert("Turn skipped successfully!");
     } catch (error) {
       // Handle error
       alert("Failed to skip turn. Please try again.");
+    } finally {
+      setIsSkipping(false);
     }
   };
 
@@ -913,7 +941,15 @@ const TransferWindowPage: React.FC = () => {
         )}
 
         {!isWindowPending && (
-          <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 2 }}>
+          <Box
+            sx={{
+              mb: 2,
+              display: "flex",
+              alignItems: "center",
+              gap: 2,
+              flexWrap: "wrap",
+            }}
+          >
             <Typography variant="h6" sx={{ color: "white" }}>
               {transferInfo.status === "completed"
                 ? "Transfer window has ended"
@@ -929,6 +965,29 @@ const TransferWindowPage: React.FC = () => {
                 </span>
               )}
             </Typography>
+            {isCommissioner &&
+              isWindowOpen &&
+              transferInfo.status !== "completed" && (
+                <Button
+                  variant="outlined"
+                  size="small"
+                  onClick={handleSkipTurn}
+                  disabled={isSkipping}
+                  data-testid="commissioner-skip-turn"
+                  sx={{
+                    color: "#ff9999",
+                    borderColor: "#ff9999",
+                    "&:hover": {
+                      borderColor: "#ff6b6b",
+                      backgroundColor: "rgba(255, 107, 107, 0.1)",
+                    },
+                  }}
+                >
+                  {isSkipping
+                    ? "Skipping…"
+                    : `Commissioner: skip ${getCurrentTurnTeamName()}'s turn`}
+                </Button>
+              )}
           </Box>
         )}
 
