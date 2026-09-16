@@ -24,8 +24,10 @@
  * Every active row is rewritten to the new definition, so the old preseason flags are replaced,
  * not merged. Dry run by default; pass --write to apply.
  *
- *   node scripts/flag-summer-window-moves.js            # dry run, prints the full list
+ *   node scripts/flag-summer-window-moves.js                          # dry run, prints the full list
  *   node scripts/flag-summer-window-moves.js --write
+ *   node scripts/flag-summer-window-moves.js --insert-missing [--write]  # also add arrivals the
+ *                                       stats feed has not seen yet as 0-goal rows (see below)
  */
 
 const cheerio = require("cheerio");
@@ -34,6 +36,7 @@ const {
   DynamoDBDocumentClient,
   ScanCommand,
   UpdateCommand,
+  PutCommand,
 } = require("@aws-sdk/lib-dynamodb");
 
 const WINDOW_OPENS = new Date("2026-07-13T00:00:00Z");
@@ -246,6 +249,51 @@ async function main() {
   console.log("\nNot found in pool:");
   unmatched.forEach((m) => console.log(`    ${fmt(m.date)}  ${m.name.padEnd(28)} → ${m.toTeam}  from ${m.from}  [${m.mode}]`));
 
+  /*
+   * --insert-missing: add the unmatched arrivals as 0-goal rows so they can be drafted before
+   * their debut. The pool is otherwise built from the stats feed, which only lists players who
+   * have appeared, so a September signing who has not played yet is invisible to the draft.
+   * They get no mls_api_id; the nightly goal sync matches unmapped rows by name the first time
+   * they score and stamps the id then.
+   *
+   * Skipped: anyone whose LATEST dated move is a departure from an MLS first team (signed and
+   * loaned straight back out), and anyone matching an inactive (departed) pool row by name is
+   * reactivated instead of duplicated.
+   */
+  const insertMissing = process.argv.includes("--insert-missing");
+  const insertPlan = [];
+  if (insertMissing) {
+    const departures = windowMoves
+      .map((m) => ({ ...m, toTeam: toMlsFirstTeam(m.to), fromTeam: toMlsFirstTeam(m.from) }))
+      .filter((m) => m.fromTeam && !m.toTeam);
+    const inactiveByName = new Map();
+    for (const row of pool.filter((r) => r.inactive_2026 === true)) {
+      const key = normalizeName(row.name);
+      if (!inactiveByName.has(key)) inactiveByName.set(key, []);
+      inactiveByName.get(key).push(row);
+    }
+    let nextId = Math.max(...pool.map((r) => Number(r.id)).filter((n) => Number.isFinite(n) && n < 900000)) + 1;
+    for (const move of unmatched) {
+      const key = normalizeName(move.name);
+      const leftAgain = departures.find((d) => normalizeName(d.name) === key && d.date >= move.date);
+      if (leftAgain) {
+        insertPlan.push({ action: "skip", move, reason: `left again ${fmt(leftAgain.date)} → ${leftAgain.to}` });
+        continue;
+      }
+      const dormant = inactiveByName.get(key) || [];
+      if (dormant.length === 1) {
+        insertPlan.push({ action: "reactivate", move, row: dormant[0] });
+        continue;
+      }
+      insertPlan.push({ action: "insert", move, id: String(nextId++) });
+    }
+    console.log("\nINSERT PLAN for players not in the pool:");
+    for (const p of insertPlan) {
+      const tag = p.action === "insert" ? `insert id=${p.id}` : p.action === "reactivate" ? `reactivate id=${p.row.id}` : `SKIP (${p.reason})`;
+      console.log(`    ${fmt(p.move.date)}  ${p.move.name.padEnd(28)} ${p.move.toTeam.padEnd(24)} ${p.move.fromTeam ? "intra-MLS" : "new to MLS"}  ${tag}`);
+    }
+  }
+
   // Diff against current flags / team
   const teamFixById = new Map(teamCorrections.map((c) => [c.id, c.toTeam]));
   const changes = [];
@@ -280,6 +328,45 @@ async function main() {
     done++;
   }
   console.log(`Updated ${done} rows.`);
+
+  let inserted = 0;
+  let reactivated = 0;
+  const nowIso = new Date().toISOString();
+  for (const plan of insertPlan) {
+    const flags = { isNew: !plan.move.fromTeam, isNewToTeam: true, flags_basis: FLAGS_BASIS };
+    if (plan.action === "insert") {
+      await documentClient.send(
+        new PutCommand({
+          TableName: PLAYERS_TABLE,
+          Item: {
+            id: plan.id,
+            name: plan.move.name.replace(/\s+/g, " ").trim(),
+            team: plan.move.toTeam,
+            goals_2026: 0,
+            ...flags,
+            last_updated: nowIso,
+            source: `inserted from Wikipedia transfer list ${fmt(plan.move.date)} (${plan.move.from} → ${plan.move.toTeam}, ${plan.move.mode}); no MLS stats yet, mls_api_id to be stamped by the goal sync on first appearance`,
+          },
+          ConditionExpression: "attribute_not_exists(id)",
+        })
+      );
+      inserted++;
+    } else if (plan.action === "reactivate") {
+      await documentClient.send(
+        new UpdateCommand({
+          TableName: PLAYERS_TABLE,
+          Key: { id: plan.row.id },
+          UpdateExpression: "SET team = :team, isNew = :n, isNewToTeam = :t, flags_basis = :b, inactive_2026 = :f, last_updated = :ts, reactivated_reason = :r",
+          ExpressionAttributeValues: {
+            ":team": plan.move.toTeam, ":n": flags.isNew, ":t": true, ":b": FLAGS_BASIS, ":f": false, ":ts": nowIso,
+            ":r": `returned to MLS ${fmt(plan.move.date)} per Wikipedia transfer list (${plan.move.from} → ${plan.move.toTeam})`,
+          },
+        })
+      );
+      reactivated++;
+    }
+  }
+  if (insertPlan.length) console.log(`Inserted ${inserted}, reactivated ${reactivated}, skipped ${insertPlan.filter((p) => p.action === "skip").length}.`);
 }
 
 main().catch((error) => {
