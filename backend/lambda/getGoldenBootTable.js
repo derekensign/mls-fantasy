@@ -43,29 +43,41 @@ export const handler = async (event) => {
     });
 
     const draftedPlayersResponse = await docClient.send(draftedPlayersCommand);
-    console.log(
-      "Drafted players response:",
-      JSON.stringify(draftedPlayersResponse.Items, null, 2)
-    );
+    console.log(`Drafted players: ${draftedPlayersResponse.Items?.length ?? 0}`);
 
     const hasDraftedPlayers = draftedPlayersResponse.Items?.length > 0;
     if (!hasDraftedPlayers) {
       console.log("No drafted players found - will show fantasy teams with 0 goals");
     }
 
-    // Get player details from Players_2026
-    const playersCommand = new AWS.ScanCommand({
-      TableName: "Players_2026",
-    });
-    const playersResponse = await docClient.send(playersCommand);
-    console.log(
-      "Players response:",
-      JSON.stringify(playersResponse.Items, null, 2)
-    );
+    /*
+     * Get player details from Players_2026. The table is ~1,100 rows / ~300 KB, so a single
+     * Scan can hit the 1 MB page limit as it grows; follow LastEvaluatedKey rather than
+     * silently reading a partial table (which would show missing players as 0 goals).
+     *
+     * Do NOT log the full item arrays here. This function used to JSON.stringify the entire
+     * player table (and the drafted list, and the result) into CloudWatch on every call; once
+     * the pool grew past 1,000 rows that alone pushed the duration to ~2.9 s against a 3 s
+     * timeout, and the standings, My Team and the commissioner's settings panel all failed
+     * with "Internal Server Error".
+     */
+    const playerItems = [];
+    let playersStartKey;
+    do {
+      const playersResponse = await docClient.send(
+        new AWS.ScanCommand({
+          TableName: "Players_2026",
+          ExclusiveStartKey: playersStartKey,
+        })
+      );
+      playerItems.push(...(playersResponse.Items || []));
+      playersStartKey = playersResponse.LastEvaluatedKey;
+    } while (playersStartKey);
+    console.log(`Players_2026 rows: ${playerItems.length}`);
 
     // Create players lookup map
     const playersMap = new Map(
-      playersResponse.Items?.map((player) => [
+      playerItems.map((player) => [
         player.id,
         {
           name: player.name,
@@ -84,10 +96,7 @@ export const handler = async (event) => {
       },
     });
     const fantasyPlayersResponse = await docClient.send(fantasyPlayersCommand);
-    console.log(
-      "Fantasy players response:",
-      JSON.stringify(fantasyPlayersResponse.Items, null, 2)
-    );
+    console.log(`Fantasy players in league: ${fantasyPlayersResponse.Items?.length ?? 0}`);
 
     // Get draft record to check transfer window dates
     const draftRecordCommand = new AWS.GetCommand({
@@ -210,7 +219,9 @@ export const handler = async (event) => {
       };
     }).sort((a, b) => b.TotalGoals - a.TotalGoals);
 
-    console.log("Final result:", JSON.stringify(result, null, 2));
+    console.log(
+      `Result: ${result.length} teams, top: ${result[0]?.FantasyPlayerName ?? "-"} (${result[0]?.TotalGoals ?? 0})`
+    );
 
     return {
       statusCode: 200,

@@ -113,14 +113,17 @@ export default function MyTeam() {
                 fantasyPlayerName: currentUserTeam.FantasyPlayerName,
                 players: currentUserTeam.Players.map((player: any) => ({
                   PlayerName: player.name,
-                  Goals: player.goals_2025,
+                  // The golden boot API returns the current season as goals_2026, already
+                  // adjusted for transfers (only goals after pickup count). It was still
+                  // reading goals_2025 here, so every player showed no goals.
+                  Goals: player.goals_2026 ?? 0,
                   TransferStatus:
                     player.transferStatus === "Original"
                       ? ""
                       : player.transferStatus,
                   JoinedDate: player.joinedDate,
                   LeftDate: player.leftDate,
-                  GoalsAfterJoining: player.goals_2025, // This will be the adjusted goals from the Lambda
+                  GoalsAfterJoining: player.goals_2026 ?? 0,
                 })),
               };
 

@@ -211,6 +211,10 @@ const TransferWindowPage: React.FC = () => {
               item.goals_2026?.N ?? item.goals_2026 ?? "0",
               10
             ),
+            // The "New to MLS" / "New to Team" filter checkboxes read these; without them
+            // both filters matched nothing and showed an empty table.
+            isNew: item.isNew?.BOOL ?? item.isNew === true,
+            isNewToTeam: item.isNewToTeam?.BOOL ?? item.isNewToTeam === true,
             draftedBy: null,
             ownerTeamName: ownershipInfo?.ownerTeamName || null,
             ownerFantasyPlayerName:
