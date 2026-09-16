@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/router";
 import {
   Paper,
@@ -101,6 +101,16 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
   const [isTransferWindowActive, setIsTransferWindowActive] =
     useState<boolean>(false);
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
+  // Whether the editor is showing the order already saved on the league (true) or a fresh
+  // standings-derived default (false). Drives the helper text so the commissioner knows
+  // which one they are about to save.
+  const [orderSource, setOrderSource] = useState<"saved" | "standings">(
+    "standings"
+  );
+  // Apply the saved order at most once. The initialization effect below re-runs whenever the
+  // parent re-fetches draftSettings, and re-applying then would throw away any drag-reorder
+  // the commissioner has made since.
+  const appliedSavedOrderRef = useRef(false);
 
   // On mount or when draftSettings change, initialize from draftSettings if available.
   useEffect(() => {
@@ -123,10 +133,46 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
       }
 
       try {
-        // NOTE: the transfer order (transferOrderIds) is built in fetchData from
-        // the standings joined to FantasyPlayerIds. We intentionally do NOT rebuild
-        // it here — doing so previously overwrote the good order with empty strings
-        // because the standings rows carry no FantasyPlayerId of their own.
+        // NOTE: the standings-derived default order (transferOrderIds) is built in
+        // fetchData from the standings joined to FantasyPlayerIds. We intentionally do
+        // NOT rebuild it from the standings here — doing so previously overwrote the good
+        // order with empty strings because the standings rows carry no FantasyPlayerId
+        // of their own.
+        //
+        // What we DO load here is the order already saved on the league, when one exists.
+        // The standings default is a reasonable starting point for a first-time setup, but
+        // it is not what was agreed once the commissioner has saved an order: ties in the
+        // standings come back in whatever order the API returned them, so re-deriving on
+        // every page load would quietly flip tied managers each time this panel is opened
+        // and saved. The saved list is only trusted if every id in it is a manager in this
+        // league and every manager is present, so a stale or hand-edited list cannot drop
+        // anyone from the window.
+        if (!appliedSavedOrderRef.current) {
+          const savedOrder: string[] = (
+            (extractValue(draftSettings.transferOrder) as unknown[]) || []
+          )
+            .map((id) => String(extractValue(id) ?? "").trim())
+            .filter(Boolean);
+          const leagueIds = new Set(
+            orderedPlayers.map((p) => String(p.FantasyPlayerId))
+          );
+          const savedOrderIsComplete =
+            savedOrder.length > 0 &&
+            savedOrder.length === leagueIds.size &&
+            new Set(savedOrder).size === savedOrder.length &&
+            savedOrder.every((id) => leagueIds.has(id));
+
+          if (savedOrderIsComplete) {
+            setTransferOrderIds(savedOrder);
+            setOrderSource("saved");
+          } else if (savedOrder.length > 0) {
+            console.warn(
+              "Saved transferOrder does not match this league's managers; falling back to standings order.",
+              { savedOrder, leagueIds: Array.from(leagueIds) }
+            );
+          }
+          appliedSavedOrderRef.current = true;
+        }
 
         // Initialize other settings from draftSettings
         setMaxRounds(extractValue(draftSettings.transfer_max_rounds) || 2);
@@ -564,12 +610,15 @@ const TransferWindowSettings: React.FC<TransferWindowSettingsProps> = ({
           >
             {Boolean(isTransferWindowActive)
               ? "Transfer order is locked while window is active."
-              : `Transfer order is automatically set based on current standings (worst teams first). 
-                 ${
-                   Boolean(isSnakeOrder)
-                     ? " Snake order will reverse direction each round."
-                     : " Order stays the same each round."
-                 }`}
+              : `${
+                  orderSource === "saved"
+                    ? "Showing the order saved for this league. Drag to change it before saving."
+                    : "No order saved yet, so this defaults to current standings (worst teams first). Drag to adjust ties before saving."
+                }${
+                  Boolean(isSnakeOrder)
+                    ? " Snake order will reverse direction each round."
+                    : " Order stays the same each round."
+                }`}
           </Typography>
 
           <div

@@ -1,3 +1,15 @@
+/**
+ * updateDraftSettings.js
+ *
+ * DEPLOYED AS the Lambda named `updateDraftData` (handler index.handler, file index.mjs), which
+ * backs `POST /league/{league_id}/draft-settings`. The frontend reaches it through
+ * `updateDraftSettings()` in packages/api, and the commissioner's Transfer Window Settings panel
+ * saves everything (order, rounds, snake, mode, start/end, status, current turn) through here.
+ *
+ * There used to be a second file, updateDraftData.js, that looked like the source for that Lambda
+ * but was an older copy without transfer_mode support. Deploying it by mistake silently removed
+ * the ability to save the transfer mode, so it was deleted. This file is the only source.
+ */
 import { DynamoDBClient } from "@aws-sdk/client-dynamodb";
 import { DynamoDBDocumentClient, UpdateCommand } from "@aws-sdk/lib-dynamodb";
 

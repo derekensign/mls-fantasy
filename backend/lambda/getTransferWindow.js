@@ -106,6 +106,19 @@ exports.handler = async (event) => {
       }
     }
 
+    /*
+     * A window that has used up all its rounds is over even if the clock says otherwise.
+     * advanceTransferTurn / markUserDoneTransferring write transfer_window_status = "completed"
+     * after the final pick, but leave transfer_current_turn_team pointing at whoever picked
+     * last. If the time-based status keeps reporting "active", that manager's page keeps
+     * showing "(Your Turn!)" with a live ADD button, and pickupPlayer does no turn or round
+     * validation, so they can keep adding players until the end time passes. The database
+     * verdict has to win here.
+     */
+    if (draftRecord.transfer_window_status === "completed") {
+      calculatedStatus = "completed";
+    }
+
     return {
       statusCode: 200,
       headers: {
