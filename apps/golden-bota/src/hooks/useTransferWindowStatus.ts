@@ -38,18 +38,18 @@ export const useTransferWindowStatus = () => {
         );
 
         if (draftSettings) {
-          // Check if transfer window is currently active based on time comparison only
+          // The only consumer is the navbar's "Transfer" link. That link should appear as soon
+          // as a window is SCHEDULED, not only once the clock passes the start time: the
+          // transfer page shows a countdown while the window is pending, and people need a way
+          // to reach it. So "active" here means "scheduled and not yet ended".
           const windowStart = extractValue(draftSettings.transfer_window_start);
           const windowEnd = extractValue(draftSettings.transfer_window_end);
           const now = new Date();
 
-          const isActive =
-            windowStart &&
-            windowEnd &&
-            new Date(windowStart) <= now &&
-            now <= new Date(windowEnd);
+          const isScheduledOrOpen =
+            windowStart && windowEnd && now <= new Date(windowEnd);
 
-          setIsTransferWindowActive(Boolean(isActive));
+          setIsTransferWindowActive(Boolean(isScheduledOrOpen));
         }
       } catch (error) {
         console.error("Error checking transfer window status:", error);

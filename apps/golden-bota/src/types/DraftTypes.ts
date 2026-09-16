@@ -80,11 +80,14 @@ export interface TransferAction {
 }
 
 export interface TransferWindowInfo {
-  status: "inactive" | "active" | "completed";
+  // "pending" = a start time is set but has not arrived yet (the page shows a countdown).
+  status: "inactive" | "pending" | "active" | "completed";
   start: string;
   end: string;
   currentTurn?: string;
   round: number;
+  maxRounds?: number;
+  snakeOrder?: boolean;
   // "standard" = drop then pick up; "add_only" = add without dropping (squad grows).
   mode?: "standard" | "add_only";
   transferOrder: string[];

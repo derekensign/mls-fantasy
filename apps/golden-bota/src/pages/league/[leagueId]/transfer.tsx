@@ -21,6 +21,45 @@ import DraftedTableDrawer from "../../../components/DraftedTableDrawer";
 import Button from "@mui/material/Button";
 import { Container, Paper, Typography, Box, Alert } from "@mui/material";
 
+/** Milliseconds until `targetIso`, re-evaluated every second; 0 once the time has passed. */
+function useCountdown(targetIso: string | null | undefined): number {
+  const [remainingMs, setRemainingMs] = useState<number>(0);
+  useEffect(() => {
+    if (!targetIso) {
+      setRemainingMs(0);
+      return;
+    }
+    const targetTime = new Date(targetIso).getTime();
+    const tick = () => setRemainingMs(Math.max(0, targetTime - Date.now()));
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [targetIso]);
+  return remainingMs;
+}
+
+function formatCountdown(remainingMs: number): string {
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${days > 0 ? `${days}d ` : ""}${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+}
+
+function formatLocalDateTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZoneName: "short",
+  });
+}
+
 const TransferWindowPage: React.FC = () => {
   const auth = useAuth();
   const router = useRouter();
@@ -445,6 +484,10 @@ const TransferWindowPage: React.FC = () => {
   // Handle picking up a player
   const handlePickupPlayer = async (player: Player) => {
     if (!transferInfo || !actualUserFantasyPlayerId || isPickingUp) return;
+    // Nothing may be added before the scheduled start or after completion. The buttons are
+    // disabled in those states too, but the pickup API itself does not check, so this is the
+    // last line of defence against a stale tab.
+    if (transferInfo.status !== "active") return;
 
     // In standard mode a player must have been dropped first; in add-only mode
     // there is no drop, so we go straight to the pickup.
@@ -601,8 +644,36 @@ const TransferWindowPage: React.FC = () => {
     );
   };
 
-  // Check if it's user's turn
-  const isUserTurn = transferInfo?.currentTurn === actualUserFantasyPlayerId;
+  // Window lifecycle. "pending" means the commissioner has scheduled a start time that has not
+  // arrived yet: everyone can see the page, the order and the pool, but nobody can add.
+  const isWindowPending = transferInfo?.status === "pending";
+  const isWindowOpen = transferInfo?.status === "active";
+  const msUntilOpen = useCountdown(isWindowPending ? transferInfo?.start : null);
+
+  // When the countdown reaches zero, ask the API for the new status straight away instead of
+  // waiting for the next poll, so the first manager's "Your Turn" appears on the second.
+  useEffect(() => {
+    if (isWindowPending && msUntilOpen === 0 && transferInfo?.start) {
+      loadTransferData();
+    }
+  }, [isWindowPending, msUntilOpen, transferInfo?.start, loadTransferData]);
+
+  // Check if it's user's turn. The current-turn team is set when the window is scheduled, so
+  // before the start time the first manager is "up next" but must not be able to act yet.
+  const isUserTurn =
+    isWindowOpen && transferInfo?.currentTurn === actualUserFantasyPlayerId;
+
+  // Name for any manager id in the order.
+  const teamLabelFor = (fantasyPlayerId: string) => {
+    const team = fantasyPlayers.find(
+      (fp) => fp.FantasyPlayerId.toString() === fantasyPlayerId
+    );
+    return team?.TeamName || team?.FantasyPlayerName || `Team ${fantasyPlayerId}`;
+  };
+  const managerNameFor = (fantasyPlayerId: string) =>
+    fantasyPlayers.find(
+      (fp) => fp.FantasyPlayerId.toString() === fantasyPlayerId
+    )?.FantasyPlayerName || "";
 
   // Check if user has marked themselves as done transferring
   const isUserDoneTransferring = transferInfo?.finishedTransferringTeams
@@ -710,10 +781,14 @@ const TransferWindowPage: React.FC = () => {
     );
   }
 
+  // Only a window with no schedule at all is hidden. A pending window renders with a countdown,
+  // and a completed one renders read-only with its history.
   if (
     !transferInfo ||
     transferInfo.status === "inactive" ||
-    (transferInfo.isActive === false && transferInfo.status !== "completed")
+    (transferInfo.isActive === false &&
+      transferInfo.status !== "completed" &&
+      transferInfo.status !== "pending")
   ) {
     return (
       <Container
@@ -780,26 +855,122 @@ const TransferWindowPage: React.FC = () => {
         <Typography variant="h4" sx={{ color: "#B8860B", mb: 2 }}>
           {transferInfo.status === "completed"
             ? "Transfer Window - Completed"
+            : isWindowPending
+            ? "Transfer Window - Opens Soon"
             : `Transfer Window - Round ${transferInfo.round}`}
         </Typography>
 
-        <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 2 }}>
-          <Typography variant="h6" sx={{ color: "white" }}>
-            {transferInfo.status === "completed"
-              ? "Transfer window has ended"
-              : `Current Turn: ${getCurrentTurnTeamName()}`}
-            {transferInfo.status !== "completed" && isUserTurn && (
-              <span style={{ color: "#B8860B", marginLeft: "10px" }}>
-                (Your Turn!)
-              </span>
-            )}
-            {transferInfo.status !== "completed" && !isUserTurn && (
-              <span style={{ color: "#666", marginLeft: "10px" }}>
-                (Waiting...)
-              </span>
-            )}
-          </Typography>
-        </Box>
+        {/* Countdown to the scheduled start */}
+        {isWindowPending && (
+          <Paper
+            data-testid="transfer-countdown"
+            sx={{
+              p: 3,
+              mb: 3,
+              backgroundColor: "#000",
+              border: "1px solid #B8860B",
+              textAlign: "center",
+            }}
+          >
+            <Typography
+              variant="overline"
+              sx={{ color: "#B8860B", letterSpacing: 2 }}
+            >
+              Window opens in
+            </Typography>
+            <Typography
+              variant="h2"
+              sx={{
+                color: "white",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: "bold",
+                lineHeight: 1.1,
+              }}
+            >
+              {formatCountdown(msUntilOpen)}
+            </Typography>
+            <Typography variant="body1" sx={{ color: "#ccc", mt: 1 }}>
+              {formatLocalDateTime(transferInfo.start)}
+              {transferInfo.currentTurn
+                ? ` · First pick: ${getCurrentTurnTeamName()}`
+                : ""}
+            </Typography>
+            <Typography variant="body2" sx={{ color: "#999", mt: 1 }}>
+              {isAddOnlyMode
+                ? `Add-only: each manager adds ${
+                    transferInfo.maxRounds ?? 2
+                  } players, one per turn, no drops.`
+                : `Each manager drops a player and picks one up, ${
+                    transferInfo.maxRounds ?? 2
+                  } rounds.`}{" "}
+              Only goals scored after a player is added count for the new team.
+            </Typography>
+          </Paper>
+        )}
+
+        {!isWindowPending && (
+          <Box sx={{ mb: 2, display: "flex", alignItems: "center", gap: 2 }}>
+            <Typography variant="h6" sx={{ color: "white" }}>
+              {transferInfo.status === "completed"
+                ? "Transfer window has ended"
+                : `Current Turn: ${getCurrentTurnTeamName()}`}
+              {transferInfo.status !== "completed" && isUserTurn && (
+                <span style={{ color: "#B8860B", marginLeft: "10px" }}>
+                  (Your Turn!)
+                </span>
+              )}
+              {transferInfo.status !== "completed" && !isUserTurn && (
+                <span style={{ color: "#666", marginLeft: "10px" }}>
+                  (Waiting...)
+                </span>
+              )}
+            </Typography>
+          </Box>
+        )}
+
+        {/* Pick order, so everyone can see when they are up. Highlights the current turn. */}
+        {transferInfo.transferOrder?.length > 0 && (
+          <Box sx={{ mb: 2 }} data-testid="transfer-order">
+            <Typography variant="subtitle2" sx={{ color: "#B8860B", mb: 1 }}>
+              Pick order
+              {transferInfo.status !== "completed"
+                ? transferInfo.snakeOrder
+                  ? " (reverses each round)"
+                  : ` (same order every round, ${
+                      transferInfo.maxRounds ?? 2
+                    } rounds)`
+                : ""}
+            </Typography>
+            <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+              {transferInfo.transferOrder.map((teamId, index) => {
+                const isCurrent =
+                  transferInfo.status !== "completed" &&
+                  teamId === transferInfo.currentTurn;
+                const isMe = teamId === actualUserFantasyPlayerId;
+                return (
+                  <Box
+                    key={`${teamId}-${index}`}
+                    sx={{
+                      px: 1.25,
+                      py: 0.5,
+                      borderRadius: "999px",
+                      fontSize: "0.85rem",
+                      backgroundColor: isCurrent ? "#B8860B" : "#2a2a2a",
+                      color: isCurrent ? "black" : isMe ? "#B8860B" : "#ddd",
+                      border: isMe ? "1px solid #B8860B" : "1px solid #333",
+                      fontWeight: isCurrent || isMe ? "bold" : "normal",
+                    }}
+                    title={teamLabelFor(teamId)}
+                  >
+                    {index + 1}. {managerNameFor(teamId) || teamLabelFor(teamId)}
+                    {isCurrent ? (isWindowOpen ? " ▶" : " (first)") : ""}
+                    {isMe ? " (you)" : ""}
+                  </Box>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
 
         {/* Transfer Status */}
         {isUserTurn && (
@@ -821,17 +992,25 @@ const TransferWindowPage: React.FC = () => {
           </Alert>
         )}
 
-        {!isUserTurn && transferInfo?.currentTurn && (
+        {isWindowOpen && !isUserTurn && transferInfo?.currentTurn && (
           <Alert severity="info" sx={{ mb: 2 }}>
             It&apos;s {getCurrentTurnTeamName()}&apos;s turn to make a transfer.
             The page will auto-refresh every 3 seconds.
           </Alert>
         )}
 
+        {isWindowPending && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            You can browse the player pool now. Adding opens for{" "}
+            {getCurrentTurnTeamName()} when the countdown ends, and this page
+            updates by itself.
+          </Alert>
+        )}
+
         {/* Transfer Window Timeline */}
         <Typography variant="body2" sx={{ color: "#ccc" }}>
-          Window: {new Date(transferInfo.start).toLocaleDateString()} -{" "}
-          {new Date(transferInfo.end).toLocaleDateString()}
+          Window: {formatLocalDateTime(transferInfo.start)} –{" "}
+          {formatLocalDateTime(transferInfo.end)}
         </Typography>
       </Paper>
 
