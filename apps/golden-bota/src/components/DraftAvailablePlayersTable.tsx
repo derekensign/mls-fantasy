@@ -322,78 +322,130 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
    * Mobile View: Uses a grid layout with a header (with sorting controls) rendered once.
    * The grid ensures a consistent column width with some extra right padding for the Actions column.
    */
+  /*
+   * Mobile View: one dark card per player instead of a four-column grid. The old grid used
+   * bg-white rows while the page's text colour is bone, so names, teams and goals rendered
+   * white-on-white and were unreadable; it also squeezed a 30-character team name into a
+   * quarter of a 390px screen. Sorting lives in a compact bar above the list.
+   */
+  const mobileSortLabelSX = {
+    color: "#B8860B !important",
+    fontSize: "0.8rem",
+    fontWeight: 700,
+    textTransform: "uppercase" as const,
+    letterSpacing: "0.04em",
+    "& .MuiTableSortLabel-icon": { color: "#B8860B !important" },
+    "&.Mui-active": { color: "#FFD700 !important" },
+  };
+
   const renderMobileView = (players: Player[]) => (
     <div className="block lg:hidden">
-      {/* Mobile header with sorting controls */}
-      <div className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm font-bold">
-        <div className="flex items-center justify-center">
-          <TableSortLabel
-            active={sortConfig.key === "name"}
-            direction={sortConfig.key === "name" ? sortConfig.direction : "asc"}
-            onClick={() => handleSort("name")}
-          >
-            Name
-          </TableSortLabel>
-        </div>
-        <div className="flex items-center justify-center">
-          <TableSortLabel
-            active={sortConfig.key === "team"}
-            direction={sortConfig.key === "team" ? sortConfig.direction : "asc"}
-            onClick={() => handleSort("team")}
-          >
-            Team
-          </TableSortLabel>
-        </div>
-        <div className="flex items-center justify-center">
-          <TableSortLabel
-            active={sortConfig.key === "goals_2024"}
-            direction={
-              sortConfig.key === "goals_2024" ? sortConfig.direction : "asc"
-            }
-            onClick={() => handleSort("goals_2024")}
-          >
-            {goalsColumnLabel}
-          </TableSortLabel>
-        </div>
-        <div className="flex items-center justify-center pr-4">Actions</div>
+      {/* Sort bar */}
+      <div className="flex items-center gap-4 px-3 py-2 mb-2 rounded-lg bg-[#1a1a1a] border border-[#B8860B]/40">
+        <span className="text-xs text-gray-400 uppercase tracking-wide">
+          Sort
+        </span>
+        <TableSortLabel
+          active={sortConfig.key === "name"}
+          direction={sortConfig.key === "name" ? sortConfig.direction : "asc"}
+          onClick={() => handleSort("name")}
+          sx={mobileSortLabelSX}
+        >
+          Name
+        </TableSortLabel>
+        <TableSortLabel
+          active={sortConfig.key === "team"}
+          direction={sortConfig.key === "team" ? sortConfig.direction : "asc"}
+          onClick={() => handleSort("team")}
+          sx={mobileSortLabelSX}
+        >
+          Team
+        </TableSortLabel>
+        <TableSortLabel
+          active={sortConfig.key === "goals_2024"}
+          direction={
+            sortConfig.key === "goals_2024" ? sortConfig.direction : "asc"
+          }
+          onClick={() => handleSort("goals_2024")}
+          sx={mobileSortLabelSX}
+        >
+          {goalsColumnLabel}
+        </TableSortLabel>
       </div>
-      {/* Player rows */}
+
+      {/* Player cards */}
       {players.map((player) => {
         // Convert player.id to string for comparison
         const draftedRecord = draftedPlayers.find(
           (drafted) => drafted.player_id === player.id.toString()
         );
+        const draftedByName = draftedRecord
+          ? fantasyPlayers.find(
+              (fp) =>
+                fp.FantasyPlayerId.toString() === draftedRecord.team_drafted_by
+            )?.TeamName || draftedRecord.team_drafted_by
+          : null;
+        const showButton = !draftedRecord && shouldShowButton(player);
+        const ownership =
+          mode === "transfer" && getPlayerOwnership
+            ? getPlayerOwnership(player.id.toString())
+            : null;
+        const ownedLabel = ownership?.isOwned
+          ? ownership.isOwnedByUser
+            ? "On your team"
+            : `Owned by ${ownership.ownerName}`
+          : getActionButtonText(player);
         return (
           <div
             key={player.id}
-            className="grid grid-cols-4 gap-2 p-2 border-b border-gray-300 bg-white text-sm items-center"
+            className="flex items-center gap-3 px-3 py-2.5 mb-2 rounded-lg bg-[#1a1a1a] border border-[#333]"
           >
-            <div className="flex items-center justify-center gap-1 flex-wrap">
-              {player.name}
-              {player.isNew && (
-                <Chip label="New" size="small" color="success" sx={{ fontSize: '0.6rem', height: '18px' }} />
-              )}
-              {player.isNewToTeam && (
-                <Chip label="New to Team" size="small" color="info" sx={{ fontSize: '0.55rem', height: '18px' }} />
-              )}
-            </div>
-            <div className="flex items-center justify-center">
-              {player.team}
-            </div>
-            <div className="flex items-center justify-center">
-              {formatGoals(player.goals_2024)}
-            </div>
-            <div className="flex items-center justify-center pr-4">
-              {draftedRecord ? (
-                <div>
-                  Drafted by{" "}
-                  {fantasyPlayers.find(
-                    (fp) =>
-                      fp.FantasyPlayerId.toString() ===
-                      draftedRecord.team_drafted_by
-                  )?.TeamName || draftedRecord.team_drafted_by}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-white font-semibold text-[0.95rem] leading-tight">
+                  {player.name}
+                </span>
+                {player.isNew && (
+                  <Chip
+                    label="New"
+                    size="small"
+                    color="success"
+                    sx={{ fontSize: "0.6rem", height: "18px" }}
+                  />
+                )}
+                {player.isNewToTeam && (
+                  <Chip
+                    label="New to Team"
+                    size="small"
+                    color="info"
+                    sx={{ fontSize: "0.55rem", height: "18px" }}
+                  />
+                )}
+              </div>
+              <div className="text-gray-400 text-xs truncate mt-0.5">
+                {player.team}
+              </div>
+              {draftedByName && (
+                <div className="text-gray-500 text-xs truncate mt-0.5">
+                  Drafted by {draftedByName}
                 </div>
-              ) : shouldShowButton(player) ? (
+              )}
+              {!draftedByName && !showButton && (
+                <div className="text-gray-500 text-xs truncate mt-0.5">
+                  {ownedLabel}
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 text-right">
+              <div className="text-[#B8860B] font-bold text-xl leading-none tabular-nums">
+                {formatGoals(player.goals_2024)}
+              </div>
+              <div className="text-[0.6rem] text-gray-500 uppercase tracking-wide">
+                goals
+              </div>
+            </div>
+            {showButton && (
+              <div className="shrink-0">
                 <Button
                   variant="contained"
                   onClick={() => handleDraft(player)}
@@ -414,12 +466,8 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
                 >
                   {getActionButtonText(player)}
                 </Button>
-              ) : (
-                <div className="text-gray-500 text-center">
-                  {getActionButtonText(player)}
-                </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         );
       })}
@@ -563,20 +611,52 @@ const DraftAvailablePlayersTable: React.FC<DraftAvailablePlayersTableProps> = ({
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex flex-wrap gap-4 items-center">
+      {/*
+        Filter bar. Inputs are styled dark on purpose: the page text colour is bone, and a
+        white input inherits it, so anything typed (and the selected team) was white-on-white.
+      */}
+      <div className="mb-4 flex flex-wrap gap-3 items-center">
         <input
           type="text"
           placeholder="Search players"
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="p-2 border border-gray-300 rounded w-full max-w-xs"
+          className="p-2 rounded w-full max-w-xs bg-[#1a1a1a] text-white placeholder-gray-500 border border-[#B8860B]/60 focus:border-[#B8860B] focus:outline-none"
         />
         <FormControl size="small" sx={{ minWidth: 200 }}>
           <Select
             value={teamFilter}
             onChange={(e) => setTeamFilter(e.target.value)}
-            sx={{ bgcolor: "white" }}
             displayEmpty
+            sx={{
+              bgcolor: "#1a1a1a",
+              color: "white",
+              "& .MuiOutlinedInput-notchedOutline": {
+                borderColor: "rgba(184, 134, 11, 0.6)",
+              },
+              "&:hover .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#B8860B",
+              },
+              "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+                borderColor: "#B8860B",
+              },
+              "& .MuiSvgIcon-root": { color: "#B8860B" },
+            }}
+            MenuProps={{
+              PaperProps: {
+                sx: {
+                  bgcolor: "#1a1a1a",
+                  color: "white",
+                  border: "1px solid rgba(184, 134, 11, 0.6)",
+                  "& .MuiMenuItem-root.Mui-selected": {
+                    bgcolor: "rgba(184, 134, 11, 0.25)",
+                  },
+                  "& .MuiMenuItem-root:hover": {
+                    bgcolor: "rgba(184, 134, 11, 0.15)",
+                  },
+                },
+              },
+            }}
           >
             <MenuItem value="all">All Teams</MenuItem>
             {uniqueTeams.map((team) => (

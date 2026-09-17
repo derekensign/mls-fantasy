@@ -41,8 +41,11 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
 
-  // Determine if we're in transfer mode based on transfer actions
-  const isTransferMode = transferActions && transferActions.length > 0;
+  // Transfer mode comes from the caller, not from whether anything has happened yet: before
+  // the first pick the list is empty, and inferring the mode from its length made the drawer
+  // open as "Drafted Players" with an empty preseason draft table.
+  const isTransferMode =
+    mode === "transfer" || (transferActions && transferActions.length > 0);
 
   return (
     <Drawer anchor="right" open={open} onClose={onClose}>
@@ -66,7 +69,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
           }}
         >
           <Typography variant="h6">
-            {isTransferMode ? "Transferred Players" : "Drafted Players"}
+            {isTransferMode ? "Transfer History" : "Drafted Players"}
           </Typography>
           <IconButton onClick={onClose} aria-label="Close">
             <CloseIcon />
@@ -80,6 +83,7 @@ const DraftedTableDrawer: React.FC<DraftedTableDrawerProps> = ({
             draftedPlayers={draftedPlayers}
             isMobile={isMobile}
             transferActions={transferActions}
+            mode={mode}
           />
         </div>
       </Box>

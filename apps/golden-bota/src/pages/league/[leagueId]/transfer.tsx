@@ -608,7 +608,8 @@ const TransferWindowPage: React.FC = () => {
   // remaining rounds are untouched.
   const handleSkipTurn = async () => {
     if (!transferInfo || !leagueId || !isCommissioner || isSkipping) return;
-    const skippedName = getCurrentTurnTeamName();
+    const skippedName =
+      managerNameFor(transferInfo.currentTurn || "") || getCurrentTurnTeamName();
     const confirmed = confirm(
       `Skip ${skippedName}'s turn? They lose this round's pick and the next manager is up.`
     );
@@ -838,7 +839,15 @@ const TransferWindowPage: React.FC = () => {
   return (
     <Container
       maxWidth="xl"
-      sx={{ backgroundColor: "black", minHeight: "100vh", py: 4 }}
+      sx={{
+        backgroundColor: "black",
+        minHeight: "100vh",
+        pt: 4,
+        // Room for the fixed "Transfer History" button on phones so it never covers the
+        // last rows of the player list.
+        pb: { xs: 12, lg: 4 },
+        px: { xs: 1.5, sm: 3 },
+      }}
     >
       {/* Transfer Window Header */}
       <Paper sx={{ p: 3, mb: 3, backgroundColor: "#1a1a1a" }}>
@@ -884,7 +893,14 @@ const TransferWindowPage: React.FC = () => {
           </Alert>
         )}
 
-        <Typography variant="h4" sx={{ color: "#B8860B", mb: 2 }}>
+        <Typography
+          variant="h4"
+          sx={{
+            color: "#B8860B",
+            mb: 2,
+            fontSize: { xs: "1.45rem", sm: "2.125rem" },
+          }}
+        >
           {transferInfo.status === "completed"
             ? "Transfer Window - Completed"
             : isWindowPending
@@ -917,6 +933,7 @@ const TransferWindowPage: React.FC = () => {
                 fontVariantNumeric: "tabular-nums",
                 fontWeight: "bold",
                 lineHeight: 1.1,
+                fontSize: { xs: "2.75rem", sm: "3.75rem" },
               }}
             >
               {formatCountdown(msUntilOpen)}
@@ -950,7 +967,10 @@ const TransferWindowPage: React.FC = () => {
               flexWrap: "wrap",
             }}
           >
-            <Typography variant="h6" sx={{ color: "white" }}>
+            <Typography
+              variant="h6"
+              sx={{ color: "white", fontSize: { xs: "1rem", sm: "1.25rem" } }}
+            >
               {transferInfo.status === "completed"
                 ? "Transfer window has ended"
                 : `Current Turn: ${getCurrentTurnTeamName()}`}
@@ -985,7 +1005,10 @@ const TransferWindowPage: React.FC = () => {
                 >
                   {isSkipping
                     ? "Skipping…"
-                    : `Commissioner: skip ${getCurrentTurnTeamName()}'s turn`}
+                    : `Commissioner: skip ${
+                        managerNameFor(transferInfo.currentTurn || "") ||
+                        getCurrentTurnTeamName()
+                      }'s turn`}
                 </Button>
               )}
           </Box>
@@ -1191,8 +1214,10 @@ const TransferWindowPage: React.FC = () => {
                         color: "#ccc",
                         fontWeight: "bold",
                         textTransform: "uppercase",
-                        fontSize: "0.9em",
+                        fontSize: { xs: "0.7rem", sm: "0.9em" },
+                        whiteSpace: "nowrap",
                         ml: 2,
+                        flexShrink: 0,
                       }}
                     >
                       On Team
@@ -1376,14 +1401,17 @@ const TransferWindowPage: React.FC = () => {
       <div className="lg:hidden fixed bottom-4 right-4 z-50">
         <Button
           variant="contained"
+          size="small"
           onClick={() => setDraftDrawerOpen(true)}
           sx={{
             backgroundColor: "#B8860B",
             color: "black",
+            fontWeight: "bold",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
             "&:hover": { backgroundColor: "#9A7209" },
           }}
         >
-          Transfer History
+          History
         </Button>
       </div>
 
